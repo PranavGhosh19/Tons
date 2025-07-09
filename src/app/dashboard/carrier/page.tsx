@@ -14,8 +14,9 @@ import { format } from "date-fns";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Send } from "lucide-react";
+import { Send, Info } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 
 export default function CarrierDashboardPage() {
   const [user, setUser] = useState<User | null>(null);
@@ -80,6 +81,10 @@ export default function CarrierDashboardPage() {
       toast({ title: "Error", description: "Please enter a bid amount.", variant: "destructive" });
       return;
     }
+    if (selectedShipment.status !== 'live') {
+      toast({ title: "Info", description: "This shipment is not currently accepting bids.", variant: "default" });
+      return;
+    }
     setIsSubmitting(true);
     try {
       await addDoc(collection(db, "shipments", selectedShipment.id, "bids"), {
@@ -127,6 +132,7 @@ export default function CarrierDashboardPage() {
                 <TableHead>Origin</TableHead>
                 <TableHead>Destination</TableHead>
                 <TableHead>Delivery Deadline</TableHead>
+                <TableHead>Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -138,8 +144,15 @@ export default function CarrierDashboardPage() {
                   <TableCell>{shipment.origin?.portOfLoading || 'N/A'}</TableCell>
                   <TableCell>{shipment.destination?.portOfDelivery || 'N/A'}</TableCell>
                   <TableCell>{shipment.deliveryDeadline ? format(shipment.deliveryDeadline.toDate(), "PPP") : 'N/A'}</TableCell>
+                  <TableCell>
+                    <Badge variant={shipment.status === 'live' ? 'default' : 'secondary'}>
+                      {shipment.status === 'live' ? 'Live' : 'Draft'}
+                    </Badge>
+                  </TableCell>
                   <TableCell className="text-right">
-                      <Button variant="outline" size="sm" onClick={() => handleOpenBidDialog(shipment)}>View & Bid</Button>
+                      <Button variant="outline" size="sm" onClick={() => handleOpenBidDialog(shipment)}>
+                        {shipment.status === 'live' ? 'View & Bid' : 'View Details'}
+                      </Button>
                   </TableCell>
                 </TableRow>
               ))}
@@ -156,8 +169,8 @@ export default function CarrierDashboardPage() {
       <Dialog open={isBidDialogOpen} onOpenChange={setIsBidDialogOpen}>
           <DialogContent className="sm:max-w-2xl">
               <DialogHeader>
-                  <DialogTitle className="text-2xl font-headline">Bid on Shipment</DialogTitle>
-                  <p className="text-muted-foreground">Review the shipment details and place your bid.</p>
+                  <DialogTitle className="text-2xl font-headline">Shipment Details</DialogTitle>
+                  <p className="text-muted-foreground">Review the shipment details and place your bid if available.</p>
               </DialogHeader>
               {selectedShipment && (
                   <div className="grid gap-6 py-4">
@@ -175,9 +188,11 @@ export default function CarrierDashboardPage() {
                               {selectedShipment.specialInstructions && <div className="md:col-span-2"><span className="font-semibold">Instructions: </span>{selectedShipment.specialInstructions}</div>}
                           </CardContent>
                       </Card>
-                      <div className="grid gap-2">
-                          <Label htmlFor="bid-amount">Your Bid Amount (USD)</Label>
-                           <div className="flex items-center">
+
+                      {selectedShipment.status === 'live' ? (
+                        <div className="grid gap-2">
+                            <Label htmlFor="bid-amount">Your Bid Amount (USD)</Label>
+                            <div className="flex items-center">
                                 <span className="bg-muted text-muted-foreground px-3 py-2 border border-r-0 rounded-l-md">$</span>
                                 <Input
                                 id="bid-amount"
@@ -189,15 +204,25 @@ export default function CarrierDashboardPage() {
                                 className="rounded-l-none"
                                 />
                             </div>
-                      </div>
+                        </div>
+                      ) : (
+                        <Card className="bg-secondary border-dashed">
+                          <CardContent className="p-6 flex items-center justify-center gap-4">
+                              <Info className="text-muted-foreground h-5 w-5" />
+                              <p className="text-muted-foreground">This shipment is not yet accepting bids.</p>
+                          </CardContent>
+                        </Card>
+                      )}
                   </div>
               )}
               <DialogFooter>
                   <Button variant="outline" onClick={() => setIsBidDialogOpen(false)}>Cancel</Button>
-                  <Button onClick={handlePlaceBid} disabled={isSubmitting}>
-                      <Send className="mr-2 h-4 w-4" />
-                      {isSubmitting ? 'Placing Bid...' : 'Place Bid'}
-                  </Button>
+                  {selectedShipment?.status === 'live' && (
+                    <Button onClick={handlePlaceBid} disabled={isSubmitting}>
+                        <Send className="mr-2 h-4 w-4" />
+                        {isSubmitting ? 'Placing Bid...' : 'Place Bid'}
+                    </Button>
+                  )}
               </DialogFooter>
           </DialogContent>
       </Dialog>

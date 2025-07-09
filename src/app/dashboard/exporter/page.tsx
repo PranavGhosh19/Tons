@@ -27,6 +27,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 
 export default function ExporterDashboardPage() {
   const [user, setUser] = useState<User | null>(null);
@@ -158,9 +159,10 @@ export default function ExporterDashboardPage() {
             zipCode: destinationZip,
         },
         specialInstructions,
+        status: 'draft', // Initial status
         createdAt: Timestamp.fromDate(new Date()),
       });
-      toast({ title: "Success", description: "Shipment request created." });
+      toast({ title: "Success", description: "Shipment request created as a draft." });
       resetForm();
       setOpen(false);
       await fetchProducts(user.uid); // Refetch products
@@ -183,6 +185,20 @@ export default function ExporterDashboardPage() {
         </div>
     )
   }
+
+  const getStatusVariant = (status: string) => {
+    switch (status) {
+      case 'live':
+        return 'default';
+      case 'awarded':
+        return 'success';
+      case 'draft':
+        return 'secondary';
+      default:
+        return 'outline';
+    }
+  }
+
 
   return (
     <div className="container py-10">
@@ -331,6 +347,7 @@ export default function ExporterDashboardPage() {
                 <TableHead>Product</TableHead>
                 <TableHead>Destination</TableHead>
                 <TableHead>Departure Date</TableHead>
+                <TableHead>Status</TableHead>
                 <TableHead className="text-right">Delivery Deadline</TableHead>
               </TableRow>
             </TableHeader>
@@ -340,6 +357,11 @@ export default function ExporterDashboardPage() {
                   <TableCell className="font-medium">{product.productName || 'N/A'}</TableCell>
                   <TableCell>{product.destination?.portOfDelivery || 'N/A'}</TableCell>
                   <TableCell>{product.departureDate ? format(product.departureDate.toDate(), "PPP") : 'N/A'}</TableCell>
+                   <TableCell>
+                    <Badge variant={getStatusVariant(product.status)} className="capitalize">
+                      {product.status}
+                    </Badge>
+                  </TableCell>
                   <TableCell className="text-right">{product.deliveryDeadline ? format(product.deliveryDeadline.toDate(), "PPP") : 'N/A'}</TableCell>
                 </TableRow>
               ))}

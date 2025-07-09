@@ -4,21 +4,23 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { onAuthStateChanged, User } from "firebase/auth";
-import { doc, getDoc, collection, query, orderBy, onSnapshot, DocumentData, Timestamp } from "firebase/firestore";
+import { doc, getDoc, collection, query, orderBy, onSnapshot, DocumentData, Timestamp, updateDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Check, Rocket } from "lucide-react";
 import { format } from "date-fns";
+import { Badge } from "@/components/ui/badge";
 
 export default function ShipmentDetailPage() {
   const [user, setUser] = useState<User | null>(null);
   const [shipment, setShipment] = useState<DocumentData | null>(null);
   const [bids, setBids] = useState<DocumentData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const router = useRouter();
   const params = useParams();
@@ -36,14 +38,12 @@ export default function ShipmentDetailPage() {
     return () => unsubscribe();
   }, [router]);
 
-  const fetchShipment = useCallback(async () => {
+  useEffect(() => {
     if (!user || !shipmentId) return;
-    setLoading(true);
-    try {
-      const shipmentDocRef = doc(db, "shipments", shipmentId);
-      const docSnap = await getDoc(shipmentDocRef);
 
-      if (docSnap.exists()) {
+    const shipmentDocRef = doc(db, "shipments", shipmentId);
+    const unsubscribeShipment = onSnapshot(shipmentDocRef, (docSnap) => {
+       if (docSnap.exists()) {
         const shipmentData = docSnap.data();
         if (shipmentData.exporterId === user.uid) {
             setShipment({ id: docSnap.id, ...shipmentData });
@@ -55,37 +55,72 @@ export default function ShipmentDetailPage() {
         toast({ title: "Error", description: "Shipment not found.", variant: "destructive" });
         router.push("/dashboard/exporter");
       }
-    } catch (error) {
-      console.error("Error fetching shipment: ", error);
-      toast({ title: "Error", description: "Failed to fetch shipment details.", variant: "destructive" });
-    } finally {
-        // We set loading to false in the bids listener
-    }
-  }, [user, shipmentId, router, toast]);
-
-  useEffect(() => {
-    if (user) {
-      fetchShipment();
-    }
-  }, [user, fetchShipment]);
-
-  useEffect(() => {
-    if (!shipmentId) return;
-
-    const bidsQuery = query(collection(db, "shipments", shipmentId, "bids"), orderBy("createdAt", "desc"));
-    
-    const unsubscribe = onSnapshot(bidsQuery, (querySnapshot) => {
-      const bidsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setBids(bidsData);
       setLoading(false);
     }, (error) => {
-        console.error("Error fetching bids: ", error);
-        toast({ title: "Error", description: "Failed to fetch bids in real-time.", variant: "destructive" });
+        console.error("Error fetching shipment: ", error);
+        toast({ title: "Error", description: "Failed to fetch shipment details.", variant: "destructive" });
         setLoading(false);
     });
 
-    return () => unsubscribe();
-  }, [shipmentId, toast]);
+    return () => unsubscribeShipment();
+
+  }, [user, shipmentId, router, toast]);
+
+  useEffect(() => {
+    if (!shipmentId || shipment?.status === 'draft') {
+        setBids([]);
+        return;
+    };
+
+    const bidsQuery = query(collection(db, "shipments", shipmentId, "bids"), orderBy("createdAt", "desc"));
+    
+    const unsubscribeBids = onSnapshot(bidsQuery, (querySnapshot) => {
+      const bidsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setBids(bidsData);
+    }, (error) => {
+        console.error("Error fetching bids: ", error);
+        toast({ title: "Error", description: "Failed to fetch bids in real-time.", variant: "destructive" });
+    });
+
+    return () => unsubscribeBids();
+  }, [shipmentId, shipment?.status, toast]);
+
+  const handleGoLive = async () => {
+    if (!shipmentId) return;
+    setIsSubmitting(true);
+    try {
+        const shipmentDocRef = doc(db, "shipments", shipmentId);
+        await updateDoc(shipmentDocRef, { status: 'live' });
+        toast({ title: "Success!", description: "Your shipment is now live for bidding."});
+    } catch (error) {
+        console.error("Error going live: ", error);
+        toast({ title: "Error", description: "Could not make the shipment live.", variant: "destructive" });
+    } finally {
+        setIsSubmitting(false);
+    }
+  }
+
+  const handleAcceptBid = async (bid: DocumentData) => {
+    if (!shipmentId) return;
+    setIsSubmitting(true);
+    try {
+        const shipmentDocRef = doc(db, "shipments", shipmentId);
+        await updateDoc(shipmentDocRef, { 
+            status: 'awarded',
+            winningBidId: bid.id,
+            winningCarrierId: bid.carrierId,
+            winningCarrierName: bid.carrierName,
+            winningBidAmount: bid.bidAmount
+        });
+        toast({ title: "Bid Awarded!", description: `You have accepted the bid from ${bid.carrierName}.`});
+    } catch (error) {
+        console.error("Error accepting bid: ", error);
+        toast({ title: "Error", description: "Could not accept the bid.", variant: "destructive" });
+    } finally {
+        setIsSubmitting(false);
+    }
+  }
+
 
   if (loading) {
     return (
@@ -108,9 +143,24 @@ export default function ShipmentDetailPage() {
     return null; // or a not found component
   }
 
+  const getStatusInfo = () => {
+    switch(shipment.status) {
+        case 'draft':
+            return { text: "Draft", description: "This shipment is not yet live." };
+        case 'live':
+            return { text: "Accepting Bids", description: "This shipment is live for carriers to bid on." };
+        case 'awarded':
+            return { text: "Awarded", description: `Awarded to ${shipment.winningCarrierName || 'a carrier'}.` };
+        default:
+            return { text: "Status Unknown", description: "" };
+    }
+  }
+
+  const statusInfo = getStatusInfo();
+
   return (
     <div className="container py-10">
-        <Button variant="ghost" onClick={() => router.back()} className="mb-6">
+        <Button variant="ghost" onClick={() => router.push('/dashboard/exporter')} className="mb-6">
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Dashboard
         </Button>
@@ -131,52 +181,65 @@ export default function ShipmentDetailPage() {
                     </CardContent>
                 </Card>
 
-                 <Card>
-                    <CardHeader>
-                        <CardTitle>Bids Received</CardTitle>
-                        <CardDescription>
-                            {bids.length > 0 ? `A total of ${bids.length} bids have been placed on this shipment.` : "No bids have been placed yet."}
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        {bids.length > 0 ? (
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Carrier</TableHead>
-                                        <TableHead>Bid Amount (USD)</TableHead>
-                                        <TableHead>Date</TableHead>
-                                        <TableHead className="text-right">Action</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {bids.map((bid) => (
-                                        <TableRow key={bid.id}>
-                                            <TableCell className="font-medium">{bid.carrierName}</TableCell>
-                                            <TableCell>${bid.bidAmount.toLocaleString()}</TableCell>
-                                            <TableCell>{bid.createdAt ? format(bid.createdAt.toDate(), "Pp") : 'N/A'}</TableCell>
-                                            <TableCell className="text-right">
-                                                <Button size="sm">Accept Bid</Button>
-                                            </TableCell>
+                 {shipment.status !== 'draft' && (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Bids Received</CardTitle>
+                            <CardDescription>
+                                {bids.length > 0 ? `A total of ${bids.length} bids have been placed on this shipment.` : "No bids have been placed yet."}
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            {bids.length > 0 ? (
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Carrier</TableHead>
+                                            <TableHead>Bid Amount (USD)</TableHead>
+                                            <TableHead>Date</TableHead>
+                                            <TableHead className="text-right">Action</TableHead>
                                         </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        ) : (
-                             <div className="text-center py-8 text-muted-foreground">
-                                <p>Check back soon for bids from our carrier network.</p>
-                             </div>
-                        )}
-                    </CardContent>
-                </Card>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {bids.map((bid) => (
+                                            <TableRow key={bid.id} className={shipment.winningBidId === bid.id ? "bg-green-100 dark:bg-green-900" : ""}>
+                                                <TableCell className="font-medium">{bid.carrierName}</TableCell>
+                                                <TableCell>${bid.bidAmount.toLocaleString()}</TableCell>
+                                                <TableCell>{bid.createdAt ? format(bid.createdAt.toDate(), "Pp") : 'N/A'}</TableCell>
+                                                <TableCell className="text-right">
+                                                    {shipment.status === 'awarded' ? (
+                                                        shipment.winningBidId === bid.id && <Badge variant="success">Awarded</Badge>
+                                                    ) : (
+                                                        <Button size="sm" onClick={() => handleAcceptBid(bid)} disabled={isSubmitting}>Accept Bid</Button>
+                                                    )}
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            ) : (
+                                <div className="text-center py-8 text-muted-foreground">
+                                    <p>Check back soon for bids from our carrier network.</p>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+                 )}
             </div>
             <div className="space-y-6">
                 <Card className="bg-secondary">
                     <CardHeader>
                         <CardTitle>Status</CardTitle>
+                        <CardDescription>{statusInfo.description}</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <p className="text-2xl font-bold font-headline text-accent-foreground">Accepting Bids</p>
+                        <p className="text-2xl font-bold font-headline text-accent-foreground capitalize">{statusInfo.text}</p>
+                        {shipment.status === 'draft' && (
+                            <Button className="w-full mt-4" onClick={handleGoLive} disabled={isSubmitting}>
+                                <Rocket className="mr-2 h-4 w-4" />
+                                {isSubmitting ? 'Going Live...' : 'Go Live!'}
+                            </Button>
+                        )}
                     </CardContent>
                 </Card>
             </div>
