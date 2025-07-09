@@ -4,7 +4,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from 'next/navigation';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { collection, addDoc, query, getDocs, DocumentData, orderBy, Timestamp, where, doc, getDoc } from 'firebase/firestore';
+import { collection, addDoc, query, getDocs, DocumentData, Timestamp, where, doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { Button } from "@/components/ui/button";
 import {
@@ -56,9 +56,15 @@ export default function ExporterDashboardPage() {
   const { toast } = useToast();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
-        setUser(currentUser);
+        const userDocRef = doc(db, 'users', currentUser.uid);
+        const userDoc = await getDoc(userDocRef);
+        if (userDoc.exists() && userDoc.data()?.userType === 'exporter') {
+           setUser(currentUser);
+        } else {
+            router.push('/dashboard');
+        }
       } else {
         router.push('/login');
       }
@@ -67,11 +73,19 @@ export default function ExporterDashboardPage() {
   }, [router]);
   
   const fetchProducts = useCallback(async (uid: string) => {
+    setLoading(true);
     try {
       const shipmentsCollectionRef = collection(db, 'shipments');
-      const q = query(shipmentsCollectionRef, where('exporterId', '==', uid), orderBy('createdAt', 'desc'));
+      const q = query(shipmentsCollectionRef, where('exporterId', '==', uid));
       const querySnapshot = await getDocs(q);
       const productsList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      
+      productsList.sort((a, b) => {
+        const timeA = a.createdAt?.toDate()?.getTime() || 0;
+        const timeB = b.createdAt?.toDate()?.getTime() || 0;
+        return timeB - timeA;
+      });
+
       setProducts(productsList);
     } catch (error) {
       console.error("Error fetching products: ", error);
@@ -144,7 +158,7 @@ export default function ExporterDashboardPage() {
             zipCode: destinationZip,
         },
         specialInstructions,
-        createdAt: new Date(),
+        createdAt: Timestamp.fromDate(new Date()),
       });
       toast({ title: "Success", description: "Shipment request created." });
       resetForm();
