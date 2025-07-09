@@ -91,6 +91,7 @@ export default function LoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 disabled={loading}
                 onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
+                className="bg-secondary"
               />
             </div>
             <div className="grid gap-2">
@@ -111,6 +112,7 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={loading}
                 onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
+                className="bg-secondary"
               />
             </div>
             <Button onClick={handleLogin} disabled={loading} className="w-full h-12 mt-2 text-lg">
