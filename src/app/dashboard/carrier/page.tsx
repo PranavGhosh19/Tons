@@ -104,6 +104,19 @@ export default function CarrierDashboardPage() {
     }
   };
 
+  const getStatusVariant = (status: string) => {
+    switch (status) {
+      case 'live':
+        return 'default';
+      case 'awarded':
+        return 'success';
+      case 'draft':
+        return 'secondary';
+      default:
+        return 'outline';
+    }
+  };
+
 
   if (loading || !user) {
     return (
@@ -145,8 +158,8 @@ export default function CarrierDashboardPage() {
                   <TableCell>{shipment.destination?.portOfDelivery || 'N/A'}</TableCell>
                   <TableCell>{shipment.deliveryDeadline ? format(shipment.deliveryDeadline.toDate(), "PPP") : 'N/A'}</TableCell>
                   <TableCell>
-                    <Badge variant={shipment.status === 'live' ? 'default' : 'secondary'}>
-                      {shipment.status === 'live' ? 'Live' : 'Draft'}
+                    <Badge variant={getStatusVariant(shipment.status)} className="capitalize">
+                      {shipment.status}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
@@ -209,7 +222,9 @@ export default function CarrierDashboardPage() {
                         <Card className="bg-secondary border-dashed">
                           <CardContent className="p-6 flex items-center justify-center gap-4">
                               <Info className="text-muted-foreground h-5 w-5" />
-                              <p className="text-muted-foreground">This shipment is not yet accepting bids.</p>
+                              <p className="text-muted-foreground">
+                                {selectedShipment.status === 'draft' ? 'This shipment is not yet accepting bids.' : 'Bidding for this shipment is closed.'}
+                              </p>
                           </CardContent>
                         </Card>
                       )}
