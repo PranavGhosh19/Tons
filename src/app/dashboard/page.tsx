@@ -294,7 +294,7 @@ export default function DashboardPage() {
               </Card>
             </div>
             <DialogFooter>
-              <Button type="submit" onClick={handleCreateShipment} disabled={isSubmitting} className="bg-yellow-400 hover:bg-yellow-500 text-black">
+              <Button type="submit" onClick={handleCreateShipment} disabled={isSubmitting}>
                 <Send className="mr-2 h-4 w-4" />
                 {isSubmitting ? 'Starting...' : 'Start Auction Bids'}
               </Button>
@@ -335,3 +335,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    
