@@ -95,14 +95,14 @@ export default function SelectTypePage() {
   }
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-primary/10 p-4">
+    <div className="flex flex-col items-center justify-center min-h-screen bg-secondary p-4">
         <div className="absolute top-8 text-center">
             <Link
             href="/"
             className="flex items-center gap-2 font-bold text-2xl font-headline"
             >
             <Ship className="h-8 w-8 text-primary" />
-            <span className="font-bold">Shipment Battlefield</span>
+            <span className="font-bold">Shipping Battlefield</span>
             </Link>
         </div>
       <Card className="mx-auto w-full max-w-2xl shadow-2xl">

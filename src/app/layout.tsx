@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import { AuthButton } from "@/components/auth-button";
 
 export const metadata: Metadata = {
-  title: "ShipShape",
+  title: "Shipping Battlefield",
   description: "The Battlefield for Modern Shipping",
 };
 
@@ -25,7 +25,7 @@ const Header = () => (
           className="flex items-center gap-2 font-bold text-lg font-headline"
         >
           <Ship className="h-6 w-6 text-primary" />
-          <span className="font-bold">ShipShape</span>
+          <span className="font-bold">Shipping Battlefield</span>
         </Link>
       </div>
       <div className="flex flex-1 items-center justify-end space-x-2">
@@ -41,7 +41,7 @@ const Footer = () => (
   <footer className="py-6 md:px-8 md:py-0 border-t">
     <div className="container flex flex-col items-center justify-center gap-4 md:h-24 md:flex-row">
       <p className="text-center text-sm leading-loose text-muted-foreground">
-        &copy; {new Date().getFullYear()} ShipShape. All rights reserved.
+        &copy; {new Date().getFullYear()} Shipping Battlefield. All rights reserved.
       </p>
     </div>
   </footer>
@@ -57,8 +57,7 @@ export default function RootLayout({
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-        <link href="https://fonts.googleapis.com/css2?family=Poppins&display=swap" rel="stylesheet" />
-        <link href="https://fonts.googleapis.com/css2?family=PT+Sans&display=swap" rel="stylesheet" />
+        <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&family=Inter:wght@400;500&display=swap" rel="stylesheet" />
       </head>
       <body className="min-h-screen bg-background font-body antialiased">
         <div className="relative flex min-h-screen flex-col">
