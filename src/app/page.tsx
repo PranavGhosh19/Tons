@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Zap, Ship, CheckCircle } from "lucide-react";
 import Link from "next/link";
 
 export default function Home() {
@@ -32,6 +32,40 @@ export default function Home() {
             <Link href="#" className="text-sm underline underline-offset-4 hover:text-primary">
                 How Shipping Battlefield Works
             </Link>
+          </div>
+        </div>
+      </section>
+
+      <section className="w-full py-24 md:py-32 lg:py-40">
+        <div className="container">
+          <div className="grid gap-12 md:grid-cols-3 md:gap-8">
+            <div className="flex flex-col items-center text-center space-y-4">
+              <div className="bg-primary text-primary-foreground rounded-full p-4">
+                <Zap className="h-8 w-8" />
+              </div>
+              <h3 className="text-2xl font-bold font-headline">Live Bidding</h3>
+              <p className="text-muted-foreground max-w-xs">
+                Post your shipment needs and watch as top-rated carriers bid for your business in real-time, ensuring you get competitive market rates.
+              </p>
+            </div>
+            <div className="flex flex-col items-center text-center space-y-4">
+              <div className="bg-primary text-primary-foreground rounded-full p-4">
+                <Ship className="h-8 w-8" />
+              </div>
+              <h3 className="text-2xl font-bold font-headline">Vetted Carriers</h3>
+              <p className="text-muted-foreground max-w-xs">
+                Access a global network of trusted and verified freight professionals, all competing to provide you with the best service.
+              </p>
+            </div>
+            <div className="flex flex-col items-center text-center space-y-4">
+              <div className="bg-primary text-primary-foreground rounded-full p-4">
+                <CheckCircle className="h-8 w-8" />
+              </div>
+              <h3 className="text-2xl font-bold font-headline">Transparent Process</h3>
+              <p className="text-muted-foreground max-w-xs">
+                Manage your shipments, track progress, and handle documentation all in one place with our streamlined and transparent dashboard.
+              </p>
+            </div>
           </div>
         </div>
       </section>
