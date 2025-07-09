@@ -4,18 +4,28 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from 'next/navigation';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { collection, query, getDocs, DocumentData, orderBy, doc, getDoc } from 'firebase/firestore';
+import { collection, query, getDocs, DocumentData, orderBy, doc, getDoc, addDoc, Timestamp } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Send } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function CarrierDashboardPage() {
   const [user, setUser] = useState<User | null>(null);
+  const [carrierName, setCarrierName] = useState<string>("");
   const [shipments, setShipments] = useState<DocumentData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isBidDialogOpen, setIsBidDialogOpen] = useState(false);
+  const [selectedShipment, setSelectedShipment] = useState<DocumentData | null>(null);
+  const [bidAmount, setBidAmount] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   const router = useRouter();
   const { toast } = useToast();
@@ -27,6 +37,7 @@ export default function CarrierDashboardPage() {
         const userDoc = await getDoc(userDocRef);
         if (userDoc.exists() && userDoc.data()?.userType === 'carrier') {
            setUser(currentUser);
+           setCarrierName(userDoc.data()?.name || 'Anonymous Carrier');
         } else {
             router.push('/dashboard');
         }
@@ -57,6 +68,36 @@ export default function CarrierDashboardPage() {
         fetchShipments();
     }
   }, [user, fetchShipments]);
+
+  const handleOpenBidDialog = (shipment: DocumentData) => {
+    setSelectedShipment(shipment);
+    setIsBidDialogOpen(true);
+    setBidAmount("");
+  };
+
+  const handlePlaceBid = async () => {
+    if (!user || !selectedShipment || !bidAmount) {
+      toast({ title: "Error", description: "Please enter a bid amount.", variant: "destructive" });
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      await addDoc(collection(db, "shipments", selectedShipment.id, "bids"), {
+        carrierId: user.uid,
+        carrierName: carrierName,
+        bidAmount: parseFloat(bidAmount),
+        createdAt: Timestamp.now(),
+      });
+      toast({ title: "Success", description: "Your bid has been placed." });
+      setIsBidDialogOpen(false);
+      setSelectedShipment(null);
+    } catch (error) {
+      console.error("Error placing bid: ", error);
+      toast({ title: "Error", description: "Failed to place your bid.", variant: "destructive" });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
 
   if (loading || !user) {
@@ -98,7 +139,7 @@ export default function CarrierDashboardPage() {
                   <TableCell>{shipment.destination?.portOfDelivery || 'N/A'}</TableCell>
                   <TableCell>{shipment.deliveryDeadline ? format(shipment.deliveryDeadline.toDate(), "PPP") : 'N/A'}</TableCell>
                   <TableCell className="text-right">
-                      <Button variant="outline" size="sm">View & Bid</Button>
+                      <Button variant="outline" size="sm" onClick={() => handleOpenBidDialog(shipment)}>View & Bid</Button>
                   </TableCell>
                 </TableRow>
               ))}
@@ -111,6 +152,55 @@ export default function CarrierDashboardPage() {
           <p className="text-muted-foreground">Please check back later for new opportunities.</p>
         </div>
       )}
+
+      <Dialog open={isBidDialogOpen} onOpenChange={setIsBidDialogOpen}>
+          <DialogContent className="sm:max-w-2xl">
+              <DialogHeader>
+                  <DialogTitle className="text-2xl font-headline">Bid on Shipment</DialogTitle>
+                  <p className="text-muted-foreground">Review the shipment details and place your bid.</p>
+              </DialogHeader>
+              {selectedShipment && (
+                  <div className="grid gap-6 py-4">
+                      <Card>
+                          <CardHeader>
+                              <CardTitle>{selectedShipment.productName}</CardTitle>
+                              <CardDescription>From: {selectedShipment.exporterName}</CardDescription>
+                          </CardHeader>
+                          <CardContent className="grid md:grid-cols-2 gap-4 text-sm">
+                              <div><span className="font-semibold">Origin: </span>{selectedShipment.origin?.portOfLoading}</div>
+                              <div><span className="font-semibold">Destination: </span>{selectedShipment.destination?.portOfDelivery}</div>
+                              <div><span className="font-semibold">Departure: </span>{selectedShipment.departureDate ? format(selectedShipment.departureDate.toDate(), "PPP") : 'N/A'}</div>
+                              <div><span className="font-semibold">Deadline: </span>{selectedShipment.deliveryDeadline ? format(selectedShipment.deliveryDeadline.toDate(), "PPP") : 'N/A'}</div>
+                              <div className="md:col-span-2"><span className="font-semibold">Cargo: </span>{selectedShipment.cargo?.type || 'General'} - {selectedShipment.cargo?.weight}kg</div>
+                              {selectedShipment.specialInstructions && <div className="md:col-span-2"><span className="font-semibold">Instructions: </span>{selectedShipment.specialInstructions}</div>}
+                          </CardContent>
+                      </Card>
+                      <div className="grid gap-2">
+                          <Label htmlFor="bid-amount">Your Bid Amount (USD)</Label>
+                           <div className="flex items-center">
+                                <span className="bg-muted text-muted-foreground px-3 py-2 border border-r-0 rounded-l-md">$</span>
+                                <Input
+                                id="bid-amount"
+                                type="number"
+                                placeholder="e.g., 2500"
+                                value={bidAmount}
+                                onChange={(e) => setBidAmount(e.target.value)}
+                                disabled={isSubmitting}
+                                className="rounded-l-none"
+                                />
+                            </div>
+                      </div>
+                  </div>
+              )}
+              <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsBidDialogOpen(false)}>Cancel</Button>
+                  <Button onClick={handlePlaceBid} disabled={isSubmitting}>
+                      <Send className="mr-2 h-4 w-4" />
+                      {isSubmitting ? 'Placing Bid...' : 'Place Bid'}
+                  </Button>
+              </DialogFooter>
+          </DialogContent>
+      </Dialog>
     </div>
   );
 }

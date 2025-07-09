@@ -4,7 +4,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from 'next/navigation';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { collection, addDoc, query, getDocs, DocumentData, Timestamp, where, doc, getDoc } from 'firebase/firestore';
+import { collection, addDoc, query, getDocs, DocumentData, Timestamp, where, doc, getDoc, orderBy } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { Button } from "@/components/ui/button";
 import {
@@ -76,16 +76,9 @@ export default function ExporterDashboardPage() {
     setLoading(true);
     try {
       const shipmentsCollectionRef = collection(db, 'shipments');
-      const q = query(shipmentsCollectionRef, where('exporterId', '==', uid));
+      const q = query(shipmentsCollectionRef, where('exporterId', '==', uid), orderBy('createdAt', 'desc'));
       const querySnapshot = await getDocs(q);
       const productsList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      
-      productsList.sort((a, b) => {
-        const timeA = a.createdAt?.toDate()?.getTime() || 0;
-        const timeB = b.createdAt?.toDate()?.getTime() || 0;
-        return timeB - timeA;
-      });
-
       setProducts(productsList);
     } catch (error) {
       console.error("Error fetching products: ", error);
@@ -336,7 +329,7 @@ export default function ExporterDashboardPage() {
             </TableHeader>
             <TableBody>
               {products.map((product) => (
-                <TableRow key={product.id}>
+                <TableRow key={product.id} onClick={() => router.push(`/dashboard/shipment/${product.id}`)} className="cursor-pointer">
                   <TableCell className="font-medium">{product.productName || 'N/A'}</TableCell>
                   <TableCell>{product.destination?.portOfDelivery || 'N/A'}</TableCell>
                   <TableCell>{product.departureDate ? format(product.departureDate.toDate(), "PPP") : 'N/A'}</TableCell>
