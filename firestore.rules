@@ -1,41 +1,29 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    function isAuthenticated() {
-      return request.auth != null;
+    // Helper function to get the user's type from their document
+    function getUserType(userId) {
+      return get(/databases/$(database)/documents/users/$(userId)).data.userType;
     }
 
-    function isOwner(userId) {
-      return isAuthenticated() && request.auth.uid == userId;
-    }
-    
-    function getUserData(userId) {
-      return get(/databases/$(database)/documents/users/$(userId)).data;
-    }
-
-    function isUserType(userId, userType) {
-        return isAuthenticated() && getUserData(userId).userType == userType;
-    }
-
+    // Rules for user documents
     match /users/{userId} {
-      // Users can create and update their own profile document.
-      allow read, update, create: if isOwner(userId);
-      allow delete: if false;
+      allow read, update: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null;
     }
 
+    // Rules for the central shipments collection
     match /shipments/{shipmentId} {
-      // Any authenticated user of type carrier or exporter can read.
-      // Exporters will be restricted by client-side queries to only their own documents.
-      allow read: if isUserType(request.auth.uid, 'carrier') || isUserType(request.auth.uid, 'exporter');
+      // Allow authenticated users to read and list shipments.
+      // The application logic is responsible for showing the correct data.
+      allow read: if request.auth != null;
 
-      // Exporters can create shipments, but must correctly set their own ID as the exporter.
-      allow create: if isUserType(request.auth.uid, 'exporter') && request.resource.data.exporterId == request.auth.uid;
-
-      // Only the original exporter can update or delete their shipment.
-      allow update, delete: if isUserType(request.auth.uid, 'exporter') && resource.data.exporterId == request.auth.uid;
+      // Allow exporters to create shipments.
+      allow create: if request.auth != null && getUserType(request.auth.uid) == 'exporter';
+      
+      // Allow the original exporter to update or delete their shipment.
+      allow update, delete: if request.auth != null && request.auth.uid == resource.data.exporterId;
     }
   }
 }
