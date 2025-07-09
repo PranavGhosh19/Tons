@@ -43,7 +43,7 @@ export function AuthButton() {
   return (
     <>
       <Button variant="ghost" asChild>
-        <Link href="/login">Login</Link>
+        <Link href="/login">Log In</Link>
       </Button>
       <Button asChild>
         <Link href="/signup">Sign Up</Link>
