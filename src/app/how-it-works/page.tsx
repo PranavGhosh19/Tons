@@ -35,22 +35,17 @@ const carrierSteps = [
     {
         number: 1,
         title: "Find Shipments",
-        description: "Browse a wide range of available shipments from verified exporters. Filter by route, cargo type, and delivery dates to find the perfect match for your fleet."
+        description: "Browse a live marketplace of available shipments from exporters around the world. Filter by route, cargo type, and more to find jobs that match your capacity."
     },
     {
         number: 2,
-        title: "Place Competitive Bids",
-        description: "Participate in our live bidding system. Submit your best offer and watch the auction unfold in real-time. Adjust your bid to stay competitive."
+        title: "Place Your Bid",
+        description: "Found a shipment you can handle? Submit your best bid. Our system is transparent, so you can compete fairly for every opportunity."
     },
     {
         number: 3,
-        title: "Win and Haul",
-        description: "Once an exporter accepts your bid, you're awarded the shipment. Get all the details you need to pick up and deliver the cargo safely and on time."
-    },
-    {
-        number: 4,
-        title: "Streamlined Payments",
-        description: "After successful delivery, receive prompt and secure payment through our platform. Track your earnings and manage invoices all in one place."
+        title: "Win and Deliver",
+        description: "If your bid is selected, you'll be notified immediately. Coordinate with the exporter, handle the shipment, and get paid promptly upon successful delivery."
     }
 ];
 
