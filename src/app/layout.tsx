@@ -1,3 +1,4 @@
+
 import type { Metadata } from "next";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
@@ -59,7 +60,7 @@ const Header = () => (
           className="flex items-center gap-3 font-bold text-lg font-headline"
         >
           <LogoIcon />
-          <span className="font-bold text-xl">Shipment Battlefield</span>
+          <span className="font-bold text-xl">Shipping Battlefield</span>
         </Link>
       </div>
       <div className="flex flex-1 items-center justify-end space-x-2">
