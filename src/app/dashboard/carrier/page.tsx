@@ -150,25 +150,40 @@ export default function CarrierDashboardPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {shipments.map((shipment) => (
-                <TableRow key={shipment.id}>
-                  <TableCell className="font-medium">{shipment.exporterName || 'N/A'}</TableCell>
-                  <TableCell>{shipment.productName || 'N/A'}</TableCell>
-                  <TableCell>{shipment.origin?.portOfLoading || 'N/A'}</TableCell>
-                  <TableCell>{shipment.destination?.portOfDelivery || 'N/A'}</TableCell>
-                  <TableCell>{shipment.deliveryDeadline ? format(shipment.deliveryDeadline.toDate(), "PPP") : 'N/A'}</TableCell>
-                  <TableCell>
-                    <Badge variant={getStatusVariant(shipment.status)} className="capitalize">
-                      {shipment.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                      <Button variant="outline" size="sm" onClick={() => handleOpenBidDialog(shipment)}>
-                        {shipment.status === 'live' ? 'View & Bid' : 'View Details'}
-                      </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {shipments.map((shipment) => {
+                let statusBadge;
+                if (shipment.status === 'awarded') {
+                    if (shipment.winningCarrierId === user?.uid) {
+                        statusBadge = <Badge variant="success">Awarded</Badge>;
+                    } else {
+                        statusBadge = <Badge variant="outline">Better luck next time</Badge>;
+                    }
+                } else {
+                    statusBadge = (
+                        <Badge variant={getStatusVariant(shipment.status)} className="capitalize">
+                            {shipment.status}
+                        </Badge>
+                    );
+                }
+
+                return (
+                    <TableRow key={shipment.id}>
+                    <TableCell className="font-medium">{shipment.exporterName || 'N/A'}</TableCell>
+                    <TableCell>{shipment.productName || 'N/A'}</TableCell>
+                    <TableCell>{shipment.origin?.portOfLoading || 'N/A'}</TableCell>
+                    <TableCell>{shipment.destination?.portOfDelivery || 'N/A'}</TableCell>
+                    <TableCell>{shipment.deliveryDeadline ? format(shipment.deliveryDeadline.toDate(), "PPP") : 'N/A'}</TableCell>
+                    <TableCell>
+                        {statusBadge}
+                    </TableCell>
+                    <TableCell className="text-right">
+                        <Button variant="outline" size="sm" onClick={() => handleOpenBidDialog(shipment)}>
+                            {shipment.status === 'live' ? 'View & Bid' : 'View Details'}
+                        </Button>
+                    </TableCell>
+                    </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </div>
@@ -223,7 +238,15 @@ export default function CarrierDashboardPage() {
                           <CardContent className="p-6 flex items-center justify-center gap-4">
                               <Info className="text-muted-foreground h-5 w-5" />
                               <p className="text-muted-foreground">
-                                {selectedShipment.status === 'draft' ? 'This shipment is not yet accepting bids.' : 'Bidding for this shipment is closed.'}
+                                {
+                                  selectedShipment.status === 'draft' ? 'This shipment is not yet accepting bids.' :
+                                  selectedShipment.status === 'awarded' ?
+                                      (selectedShipment.winningCarrierId === user?.uid ?
+                                          'Congratulations! You won this bid.' :
+                                          'Better luck next time. This shipment has been awarded to another carrier.'
+                                      ) :
+                                  'Bidding for this shipment is closed.'
+                                }
                               </p>
                           </CardContent>
                         </Card>
