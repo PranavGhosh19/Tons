@@ -237,7 +237,7 @@ export default function ShipmentDetailPage() {
                         {shipment.status === 'draft' && (
                             <Button className="w-full mt-4" onClick={handleGoLive} disabled={isSubmitting}>
                                 <Rocket className="mr-2 h-4 w-4" />
-                                {isSubmitting ? 'Going Live...' : 'Go Live!'}
+                                {isSubmitting ? 'Going Live...' : 'Go Live'}
                             </Button>
                         )}
                     </CardContent>

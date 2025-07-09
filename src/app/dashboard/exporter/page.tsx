@@ -347,7 +347,7 @@ export default function ExporterDashboardPage() {
                 <TableHead>Product</TableHead>
                 <TableHead>Destination</TableHead>
                 <TableHead>Departure Date</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead className="text-center">Status</TableHead>
                 <TableHead className="text-right">Delivery Deadline</TableHead>
               </TableRow>
             </TableHeader>
@@ -357,10 +357,14 @@ export default function ExporterDashboardPage() {
                   <TableCell className="font-medium">{product.productName || 'N/A'}</TableCell>
                   <TableCell>{product.destination?.portOfDelivery || 'N/A'}</TableCell>
                   <TableCell>{product.departureDate ? format(product.departureDate.toDate(), "PPP") : 'N/A'}</TableCell>
-                   <TableCell>
-                    <Badge variant={getStatusVariant(product.status)} className="capitalize">
-                      {product.status}
-                    </Badge>
+                  <TableCell className="text-center">
+                    {product.status === 'draft' ? (
+                      <span className="text-muted-foreground">&mdash;</span>
+                    ) : (
+                      <Badge variant={getStatusVariant(product.status)} className="capitalize">
+                        {product.status}
+                      </Badge>
+                    )}
                   </TableCell>
                   <TableCell className="text-right">{product.deliveryDeadline ? format(product.deliveryDeadline.toDate(), "PPP") : 'N/A'}</TableCell>
                 </TableRow>
