@@ -58,7 +58,6 @@ function ExporterDashboardPage() {
   // Form state
   const [productName, setProductName] = useState("");
   const [cargoType, setCargoType] = useState("");
-  const [quantity, setQuantity] = useState("");
   const [weight, setWeight] = useState("");
   const [dimensionL, setDimensionL] = useState("");
   const [dimensionW, setDimensionW] = useState("");
@@ -141,7 +140,6 @@ function ExporterDashboardPage() {
 
                     setProductName(data.productName || "");
                     setCargoType(data.cargo?.type || "");
-                    setQuantity(data.cargo?.quantity || "");
                     setWeight(data.cargo?.weight || "");
                     setDimensionL(data.cargo?.dimensions?.length || "");
                     setDimensionW(data.cargo?.dimensions?.width || "");
@@ -173,7 +171,6 @@ function ExporterDashboardPage() {
   const resetForm = () => {
     setProductName("");
     setCargoType("");
-    setQuantity("");
     setWeight("");
     setDimensionL("");
     setDimensionW("");
@@ -211,7 +208,6 @@ function ExporterDashboardPage() {
       productName,
       cargo: {
         type: cargoType,
-        quantity,
         weight,
         dimensions: {
           length: dimensionL,
@@ -341,10 +337,6 @@ function ExporterDashboardPage() {
                         <SelectItem value="Live Animals">Live Animals</SelectItem>
                       </SelectContent>
                     </Select>
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="quantity">Quantity</Label>
-                    <Input id="quantity" type="number" placeholder="e.g., 500" value={quantity} onChange={e => setQuantity(e.target.value)} disabled={isSubmitting} />
                   </div>
                   <div className="grid gap-2">
                     <Label htmlFor="weight">Total Weight</Label>
