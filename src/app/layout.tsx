@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Ship } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { AuthButton } from "@/components/auth-button";
 
 export const metadata: Metadata = {
   title: "ShipShape",
@@ -29,12 +30,7 @@ const Header = () => (
       </div>
       <div className="flex flex-1 items-center justify-end space-x-2">
         <nav className="flex items-center gap-2 sm:gap-4">
-          <Button variant="ghost" asChild>
-            <Link href="/login">Login</Link>
-          </Button>
-          <Button asChild>
-            <Link href="/signup">Sign Up</Link>
-          </Button>
+          <AuthButton />
         </nav>
       </div>
     </div>
