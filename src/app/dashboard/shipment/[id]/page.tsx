@@ -11,7 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Check, Rocket } from "lucide-react";
+import { ArrowLeft, Check, Rocket, Pencil } from "lucide-react";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 
@@ -160,10 +160,18 @@ export default function ShipmentDetailPage() {
 
   return (
     <div className="container py-10">
-        <Button variant="ghost" onClick={() => router.push('/dashboard/exporter')} className="mb-6">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Dashboard
-        </Button>
+        <div className="flex justify-between items-center mb-6">
+            <Button variant="ghost" onClick={() => router.push('/dashboard/exporter')}>
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back to Dashboard
+            </Button>
+            {shipment.status === 'draft' && (
+                <Button variant="outline" onClick={() => router.push(`/dashboard/exporter?edit=${shipmentId}`)}>
+                    <Pencil className="mr-2 h-4 w-4" />
+                    Edit Shipment
+                </Button>
+            )}
+        </div>
         <div className="grid md:grid-cols-3 gap-8 items-start">
             <div className="md:col-span-2 space-y-6">
                 <Card>
@@ -220,6 +228,7 @@ export default function ShipmentDetailPage() {
                             ) : (
                                 <div className="text-center py-8 text-muted-foreground">
                                     <p>Check back soon for bids from our carrier network.</p>
+
                                 </div>
                             )}
                         </CardContent>
@@ -247,3 +256,5 @@ export default function ShipmentDetailPage() {
     </div>
   );
 }
+
+    

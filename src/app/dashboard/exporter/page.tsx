@@ -1,8 +1,8 @@
 
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, useCallback, Suspense } from "react";
+import { useRouter, useSearchParams } from 'next/navigation';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { collection, addDoc, query, getDocs, DocumentData, Timestamp, where, doc, getDoc, updateDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { PlusCircle, Calendar as CalendarIcon, Send } from "lucide-react";
+import { PlusCircle, Calendar as CalendarIcon, Send, Pencil } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -29,11 +29,30 @@ import { cn } from "@/lib/utils";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 
-export default function ExporterDashboardPage() {
+const PageSkeleton = () => (
+    <div className="container py-10">
+        <div className="flex justify-between items-center mb-8">
+            <Skeleton className="h-10 w-48" />
+            <Skeleton className="h-10 w-48" />
+        </div>
+        <Skeleton className="h-64 w-full" />
+    </div>
+);
+
+export default function ExporterDashboardPageWrapper() {
+  return (
+    <Suspense fallback={<PageSkeleton />}>
+      <ExporterDashboardPage />
+    </Suspense>
+  );
+}
+
+function ExporterDashboardPage() {
   const [user, setUser] = useState<User | null>(null);
   const [products, setProducts] = useState<DocumentData[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
+  const [editingShipmentId, setEditingShipmentId] = useState<string | null>(null);
   
   // Form state
   const [productName, setProductName] = useState("");
@@ -55,6 +74,7 @@ export default function ExporterDashboardPage() {
   const [isSubmittingGoLive, setIsSubmittingGoLive] = useState<string | null>(null);
 
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
 
   useEffect(() => {
@@ -103,6 +123,52 @@ export default function ExporterDashboardPage() {
     }
   }, [user, fetchProducts]);
 
+  useEffect(() => {
+    const editId = searchParams.get('edit');
+    if (editId && user) {
+        const fetchAndSetShipment = async () => {
+            try {
+                const shipmentDocRef = doc(db, 'shipments', editId);
+                const docSnap = await getDoc(shipmentDocRef);
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    if (data.exporterId !== user.uid) {
+                         toast({ title: "Error", description: "You are not authorized to edit this shipment.", variant: "destructive" });
+                         router.push('/dashboard/exporter');
+                         return;
+                    }
+
+                    setProductName(data.productName || "");
+                    setCargoType(data.cargo?.type || "");
+                    setQuantity(data.cargo?.quantity || "");
+                    setWeight(data.cargo?.weight || "");
+                    setDimensionL(data.cargo?.dimensions?.length || "");
+                    setDimensionW(data.cargo?.dimensions?.width || "");
+                    setDimensionH(data.cargo?.dimensions?.height || "");
+                    setDepartureDate(data.departureDate?.toDate());
+                    setDeliveryDeadline(data.deliveryDeadline?.toDate());
+                    setPortOfLoading(data.origin?.portOfLoading || "");
+                    setOriginZip(data.origin?.zipCode || "");
+                    setPortOfDelivery(data.destination?.portOfDelivery || "");
+                    setDestinationZip(data.destination?.zipCode || "");
+                    setSpecialInstructions(data.specialInstructions || "");
+                    
+                    setEditingShipmentId(editId);
+                    setOpen(true);
+                } else {
+                    toast({ title: "Error", description: "Shipment to edit not found.", variant: "destructive" });
+                    router.push('/dashboard/exporter');
+                }
+            } catch (error) {
+                console.error("Error fetching shipment for edit: ", error);
+                toast({ title: "Error", description: "Failed to load shipment for editing.", variant: "destructive" });
+                router.push('/dashboard/exporter');
+            }
+        };
+        fetchAndSetShipment();
+    }
+  }, [searchParams, user, router, toast]);
+
   const resetForm = () => {
     setProductName("");
     setCargoType("");
@@ -118,9 +184,18 @@ export default function ExporterDashboardPage() {
     setPortOfDelivery("");
     setDestinationZip("");
     setSpecialInstructions("");
+    setEditingShipmentId(null);
   }
 
-  const handleCreateShipment = async () => {
+  const handleOpenChange = (isOpen: boolean) => {
+    setOpen(isOpen);
+    if (!isOpen) {
+        resetForm();
+        router.push('/dashboard/exporter', { scroll: false });
+    }
+  }
+
+  const handleSubmit = async () => {
     if (!productName || !portOfLoading || !originZip || !portOfDelivery || !destinationZip || !departureDate || !deliveryDeadline) {
       toast({ title: "Error", description: "Please fill out all required fields.", variant: "destructive" });
       return;
@@ -130,46 +205,58 @@ export default function ExporterDashboardPage() {
       return;
     }
     setIsSubmitting(true);
+    
+    const shipmentPayload = {
+      productName,
+      cargo: {
+        type: cargoType,
+        quantity,
+        weight,
+        dimensions: {
+          length: dimensionL,
+          width: dimensionW,
+          height: dimensionH,
+        },
+      },
+      departureDate: departureDate ? Timestamp.fromDate(departureDate) : null,
+      deliveryDeadline: deliveryDeadline ? Timestamp.fromDate(deliveryDeadline) : null,
+      origin: {
+          portOfLoading,
+          zipCode: originZip,
+      },
+      destination: {
+          portOfDelivery,
+          zipCode: destinationZip,
+      },
+      specialInstructions,
+    };
+    
     try {
-      const userDocRef = doc(db, 'users', user.uid);
-      const userDoc = await getDoc(userDocRef);
-      const exporterName = userDoc.exists() ? userDoc.data().name : 'Unknown Exporter';
-
-      await addDoc(collection(db, 'shipments'), {
-        exporterId: user.uid,
-        exporterName: exporterName,
-        productName,
-        cargo: {
-          type: cargoType,
-          quantity,
-          weight,
-          dimensions: {
-            length: dimensionL,
-            width: dimensionW,
-            height: dimensionH,
-          },
-        },
-        departureDate: departureDate ? Timestamp.fromDate(departureDate) : null,
-        deliveryDeadline: deliveryDeadline ? Timestamp.fromDate(deliveryDeadline) : null,
-        origin: {
-            portOfLoading,
-            zipCode: originZip,
-        },
-        destination: {
-            portOfDelivery,
-            zipCode: destinationZip,
-        },
-        specialInstructions,
-        status: 'draft', // Initial status
-        createdAt: Timestamp.fromDate(new Date()),
-      });
-      toast({ title: "Success", description: "Shipment request created as a draft." });
+      if (editingShipmentId) {
+        const shipmentDocRef = doc(db, "shipments", editingShipmentId);
+        await updateDoc(shipmentDocRef, shipmentPayload);
+        toast({ title: "Success", description: "Shipment updated." });
+      } else {
+        const userDocRef = doc(db, 'users', user.uid);
+        const userDoc = await getDoc(userDocRef);
+        const exporterName = userDoc.exists() ? userDoc.data().name : 'Unknown Exporter';
+        
+        await addDoc(collection(db, 'shipments'), {
+          ...shipmentPayload,
+          exporterId: user.uid,
+          exporterName: exporterName,
+          status: 'draft',
+          createdAt: Timestamp.now(),
+        });
+        toast({ title: "Success", description: "Shipment request created as a draft." });
+      }
       resetForm();
       setOpen(false);
-      await fetchProducts(user.uid); // Refetch products
+      router.push('/dashboard/exporter', { scroll: false });
+      await fetchProducts(user.uid);
     } catch (error) {
-      console.error("Error adding document: ", error);
-      toast({ title: "Error", description: "Failed to create shipment request.", variant: "destructive" });
+      console.error("Error submitting document: ", error);
+      toast({ title: "Error", description: "Failed to save shipment.", variant: "destructive" });
     } finally {
       setIsSubmitting(false);
     }
@@ -193,15 +280,7 @@ export default function ExporterDashboardPage() {
 
 
   if (loading || !user) {
-    return (
-        <div className="container py-10">
-            <div className="flex justify-between items-center mb-8">
-                <Skeleton className="h-10 w-48" />
-                <Skeleton className="h-10 w-48" />
-            </div>
-            <Skeleton className="h-64 w-full" />
-        </div>
-    )
+    return <PageSkeleton />;
   }
 
   const getStatusVariant = (status: string) => {
@@ -222,15 +301,15 @@ export default function ExporterDashboardPage() {
     <div className="container py-10">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold font-headline">My Shipments</h1>
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog open={open} onOpenChange={handleOpenChange}>
           <DialogTrigger asChild>
-            <Button>
+            <Button onClick={() => setOpen(true)}>
               <PlusCircle className="mr-2 h-4 w-4" /> New Shipment Request
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle className="text-2xl font-headline">New Shipment</DialogTitle>
+              <DialogTitle className="text-2xl font-headline">{editingShipmentId ? 'Edit Shipment' : 'New Shipment'}</DialogTitle>
             </DialogHeader>
             <div className="grid gap-8 py-4">
               <Card>
@@ -348,9 +427,9 @@ export default function ExporterDashboardPage() {
               </Card>
             </div>
             <DialogFooter>
-              <Button type="submit" onClick={handleCreateShipment} disabled={isSubmitting}>
-                <Send className="mr-2 h-4 w-4" />
-                {isSubmitting ? 'Submitting...' : 'Submit Request'}
+              <Button type="submit" onClick={handleSubmit} disabled={isSubmitting}>
+                {editingShipmentId ? <Pencil className="mr-2 h-4 w-4" /> : <Send className="mr-2 h-4 w-4" />}
+                {isSubmitting ? 'Saving...' : (editingShipmentId ? 'Save Changes' : 'Submit Request')}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -409,3 +488,5 @@ export default function ExporterDashboardPage() {
     </div>
   );
 }
+
+    
