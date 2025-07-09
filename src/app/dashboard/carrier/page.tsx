@@ -153,8 +153,8 @@ export default function CarrierDashboardPage() {
                 <TableHead>Product</TableHead>
                 <TableHead>Origin</TableHead>
                 <TableHead>Destination</TableHead>
-                <TableHead>Delivery Deadline</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Delivery Deadline</TableHead>
+                <TableHead className="text-center">Status</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -180,8 +180,8 @@ export default function CarrierDashboardPage() {
                     <TableCell>{shipment.productName || 'N/A'}</TableCell>
                     <TableCell>{shipment.origin?.portOfLoading || 'N/A'}</TableCell>
                     <TableCell>{shipment.destination?.portOfDelivery || 'N/A'}</TableCell>
-                    <TableCell>{shipment.deliveryDeadline ? format(shipment.deliveryDeadline.toDate(), "PPP") : 'N/A'}</TableCell>
-                    <TableCell>
+                    <TableCell className="text-right">{shipment.deliveryDeadline ? format(shipment.deliveryDeadline.toDate(), "PPP") : 'N/A'}</TableCell>
+                    <TableCell className="text-center">
                         {statusBadge}
                     </TableCell>
                     </TableRow>
