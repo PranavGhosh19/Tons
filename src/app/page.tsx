@@ -6,7 +6,7 @@ export default function Home() {
   return (
     <main className="flex-1">
       <section className="w-full py-24 md:py-32 lg:py-40 bg-secondary">
-        <div className="container px-4 md:px-6">
+        <div className="container">
           <div className="flex flex-col items-center space-y-8 text-center">
             <div className="space-y-4">
                 <h1 className="text-5xl font-bold tracking-tighter text-primary sm:text-6xl md:text-7xl lg:text-8xl font-headline bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-sky-400">
