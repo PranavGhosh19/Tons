@@ -17,16 +17,16 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { PlusCircle, Calendar as CalendarIcon } from "lucide-react";
+import { PlusCircle, Calendar as CalendarIcon, Send } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import { Textarea } from "@/components/ui/textarea";
 
 export default function DashboardPage() {
   const [user, setUser] = useState<User | null>(null);
@@ -35,15 +35,13 @@ export default function DashboardPage() {
   const [open, setOpen] = useState(false);
   
   // Form state
-  const [productName, setProductName] = useState("");
-  const [hsnCode, setHsnCode] = useState("");
-  const [totalWeight, setTotalWeight] = useState("");
-  const [cargoType, setCargoType] = useState("");
-  const [length, setLength] = useState("");
-  const [width, setWidth] = useState("");
-  const [height, setHeight] = useState("");
   const [departureDate, setDepartureDate] = useState<Date>();
   const [deliveryDeadline, setDeliveryDeadline] = useState<Date>();
+  const [portOfLoading, setPortOfLoading] = useState("");
+  const [originZip, setOriginZip] = useState("");
+  const [portOfDelivery, setPortOfDelivery] = useState("");
+  const [destinationZip, setDestinationZip] = useState("");
+  const [specialInstructions, setSpecialInstructions] = useState("");
   
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -83,40 +81,38 @@ export default function DashboardPage() {
   }, [user, fetchProducts]);
 
   const resetForm = () => {
-    setProductName("");
-    setHsnCode("");
-    setTotalWeight("");
-    setCargoType("");
-    setLength("");
-    setWidth("");
-    setHeight("");
     setDepartureDate(undefined);
     setDeliveryDeadline(undefined);
+    setPortOfLoading("");
+    setOriginZip("");
+    setPortOfDelivery("");
+    setDestinationZip("");
+    setSpecialInstructions("");
   }
 
-  const handleAddProduct = async () => {
-    if (!productName || !totalWeight || !cargoType || !departureDate || !deliveryDeadline) {
-      toast({ title: "Error", description: "Please fill out Product Name, Total Weight, Cargo Type, and Scheduling dates.", variant: "destructive" });
+  const handleCreateShipment = async () => {
+    if (!portOfLoading || !originZip || !portOfDelivery || !destinationZip || !departureDate || !deliveryDeadline) {
+      toast({ title: "Error", description: "Please fill out all required fields.", variant: "destructive" });
       return;
     }
     if (!user) {
-      toast({ title: "Error", description: "You must be logged in to add a product.", variant: "destructive" });
+      toast({ title: "Error", description: "You must be logged in to create a shipment.", variant: "destructive" });
       return;
     }
     setIsSubmitting(true);
     try {
       await addDoc(collection(db, 'users', user.uid, 'products'), {
-        productName,
-        hsnCode,
-        totalWeight: totalWeight ? parseFloat(totalWeight) : null,
-        cargoType,
-        dimensions: {
-            length: length ? parseFloat(length) : null,
-            width: width ? parseFloat(width) : null,
-            height: height ? parseFloat(height) : null,
-        },
         departureDate: departureDate ? Timestamp.fromDate(departureDate) : null,
         deliveryDeadline: deliveryDeadline ? Timestamp.fromDate(deliveryDeadline) : null,
+        origin: {
+            portOfLoading,
+            zipCode: originZip,
+        },
+        destination: {
+            portOfDelivery,
+            zipCode: destinationZip,
+        },
+        specialInstructions,
         createdAt: new Date(),
       });
       toast({ title: "Success", description: "Shipment request created." });
@@ -155,122 +151,113 @@ export default function DashboardPage() {
           </DialogTrigger>
           <DialogContent className="sm:max-w-4xl">
             <DialogHeader>
-              <DialogTitle className="text-2xl font-headline">New Shipment Request</DialogTitle>
+              <DialogTitle className="text-2xl font-headline">New Shipment</DialogTitle>
             </DialogHeader>
-            <div className="grid gap-6 py-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Product Details</CardTitle>
-                </CardHeader>
-                <CardContent className="grid md:grid-cols-2 gap-6">
-                  <div className="grid gap-2">
-                    <Label htmlFor="product-name">Product Name</Label>
-                    <Input id="product-name" placeholder="e.g., Premium Coffee Beans" value={productName} onChange={e => setProductName(e.target.value)} disabled={isSubmitting} />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="hsn-code">HSN Code</Label>
-                    <Input id="hsn-code" placeholder="e.g., 0901" value={hsnCode} onChange={e => setHsnCode(e.target.value)} disabled={isSubmitting} />
-                  </div>
-                  <div className="grid gap-2 md:col-span-2">
-                    <Label htmlFor="total-weight">Total Weight (kg)</Label>
-                    <Input id="total-weight" type="number" placeholder="500" value={totalWeight} onChange={e => setTotalWeight(e.target.value)} disabled={isSubmitting} />
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Cargo Details</CardTitle>
-                </CardHeader>
-                <CardContent className="grid md:grid-cols-2 gap-6">
-                  <div className="grid gap-2">
-                    <Label htmlFor="cargo-type">Cargo Type</Label>
-                    <Select onValueChange={setCargoType} value={cargoType} disabled={isSubmitting}>
-                      <SelectTrigger id="cargo-type">
-                        <SelectValue placeholder="Select a cargo type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="General Cargo">General Cargo</SelectItem>
-                        <SelectItem value="Refrigerated">Refrigerated</SelectItem>
-                        <SelectItem value="Hazardous Materials">Hazardous Materials</SelectItem>
-                        <SelectItem value="Bulk Cargo">Bulk Cargo</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="grid gap-2">
-                    <Label>Cargo Dimensions (L x W x H in meters)</Label>
-                    <div className="flex gap-2">
-                      <Input type="number" placeholder="Length" value={length} onChange={e => setLength(e.target.value)} disabled={isSubmitting} />
-                      <Input type="number" placeholder="Width" value={width} onChange={e => setWidth(e.target.value)} disabled={isSubmitting} />
-                      <Input type="number" placeholder="Height" value={height} onChange={e => setHeight(e.target.value)} disabled={isSubmitting} />
+            <div className="grid gap-8 py-4">
+                <div className="grid md:grid-cols-2 gap-6">
+                    <div className="grid gap-2">
+                        <Label htmlFor="departure-date">Preferred Departure Date</Label>
+                        <Popover>
+                        <PopoverTrigger asChild>
+                            <Button
+                            variant={"outline"}
+                            className={cn(
+                                "justify-start text-left font-normal",
+                                !departureDate && "text-muted-foreground"
+                            )}
+                            disabled={isSubmitting}
+                            >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {departureDate ? format(departureDate, "PPP") : <span>Pick a date</span>}
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0">
+                            <Calendar
+                            mode="single"
+                            selected={departureDate}
+                            onSelect={setDepartureDate}
+                            initialFocus
+                            />
+                        </PopoverContent>
+                        </Popover>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
+                    <div className="grid gap-2">
+                        <Label htmlFor="delivery-deadline">Delivery Deadline</Label>
+                        <Popover>
+                        <PopoverTrigger asChild>
+                            <Button
+                            variant={"outline"}
+                            className={cn(
+                                "justify-start text-left font-normal",
+                                !deliveryDeadline && "text-muted-foreground"
+                            )}
+                            disabled={isSubmitting}
+                            >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {deliveryDeadline ? format(deliveryDeadline, "PPP") : <span>Pick a date</span>}
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0">
+                            <Calendar
+                            mode="single"
+                            selected={deliveryDeadline}
+                            onSelect={setDeliveryDeadline}
+                            initialFocus
+                            />
+                        </PopoverContent>
+                        </Popover>
+                    </div>
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-6">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Origin</CardTitle>
+                        </CardHeader>
+                        <CardContent className="grid gap-6">
+                            <div className="grid gap-2">
+                                <Label htmlFor="port-of-loading">Port of Loading</Label>
+                                <Input id="port-of-loading" placeholder="e.g., Port of Hamburg" value={portOfLoading} onChange={e => setPortOfLoading(e.target.value)} disabled={isSubmitting} />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="origin-zip">Pin / Zip Code</Label>
+                                <Input id="origin-zip" placeholder="e.g., 20457" value={originZip} onChange={e => setOriginZip(e.target.value)} disabled={isSubmitting} />
+                            </div>
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Destination</CardTitle>
+                        </CardHeader>
+                        <CardContent className="grid gap-6">
+                            <div className="grid gap-2">
+                                <Label htmlFor="port-of-delivery">Port of Delivery</Label>
+                                <Input id="port-of-delivery" placeholder="e.g., Port of Shanghai" value={portOfDelivery} onChange={e => setPortOfDelivery(e.target.value)} disabled={isSubmitting} />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="destination-zip">Pin / Zip Code</Label>
+                                <Input id="destination-zip" placeholder="e.g., 200000" value={destinationZip} onChange={e => setDestinationZip(e.target.value)} disabled={isSubmitting} />
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
               
-              <Card>
-                <CardHeader>
-                  <CardTitle>Scheduling</CardTitle>
-                </CardHeader>
-                <CardContent className="grid md:grid-cols-2 gap-6">
-                  <div className="grid gap-2">
-                    <Label htmlFor="departure-date">Preferred Departure Date</Label>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant={"outline"}
-                          className={cn(
-                            "justify-start text-left font-normal",
-                            !departureDate && "text-muted-foreground"
-                          )}
-                          disabled={isSubmitting}
-                        >
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {departureDate ? format(departureDate, "PPP") : <span>Pick a date</span>}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0">
-                        <Calendar
-                          mode="single"
-                          selected={departureDate}
-                          onSelect={setDepartureDate}
-                          initialFocus
-                        />
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="delivery-deadline">Delivery Deadline</Label>
-                     <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant={"outline"}
-                          className={cn(
-                            "justify-start text-left font-normal",
-                            !deliveryDeadline && "text-muted-foreground"
-                          )}
-                           disabled={isSubmitting}
-                        >
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {deliveryDeadline ? format(deliveryDeadline, "PPP") : <span>Pick a date</span>}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0">
-                        <Calendar
-                          mode="single"
-                          selected={deliveryDeadline}
-                          onSelect={setDeliveryDeadline}
-                          initialFocus
-                        />
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-                </CardContent>
-              </Card>
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Additional Information</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="grid gap-2">
+                            <Label htmlFor="special-instructions">Special Instructions</Label>
+                            <Textarea id="special-instructions" placeholder="e.g., Handle with care, keep refrigerated below 5°C." value={specialInstructions} onChange={e => setSpecialInstructions(e.target.value)} disabled={isSubmitting} />
+                        </div>
+                    </CardContent>
+                </Card>
             </div>
             <DialogFooter>
-              <Button type="submit" onClick={handleAddProduct} disabled={isSubmitting}>
-                {isSubmitting ? 'Submitting...' : 'Submit Request'}
+              <Button type="submit" onClick={handleCreateShipment} disabled={isSubmitting} className="bg-yellow-400 hover:bg-yellow-500 text-black">
+                <Send className="mr-2 h-4 w-4" />
+                {isSubmitting ? 'Starting...' : 'Start Auction Bids'}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -282,9 +269,8 @@ export default function DashboardPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Product Name</TableHead>
-                <TableHead>Cargo Type</TableHead>
-                <TableHead>Weight (kg)</TableHead>
+                <TableHead>Origin</TableHead>
+                <TableHead>Destination</TableHead>
                 <TableHead>Departure Date</TableHead>
                 <TableHead className="text-right">Delivery Deadline</TableHead>
               </TableRow>
@@ -292,9 +278,8 @@ export default function DashboardPage() {
             <TableBody>
               {products.map((product) => (
                 <TableRow key={product.id}>
-                  <TableCell className="font-medium">{product.productName}</TableCell>
-                  <TableCell>{product.cargoType}</TableCell>
-                  <TableCell>{product.totalWeight}</TableCell>
+                  <TableCell className="font-medium">{product.origin?.portOfLoading || product.productName || 'N/A'}</TableCell>
+                  <TableCell>{product.destination?.portOfDelivery || product.cargoType || 'N/A'}</TableCell>
                   <TableCell>{product.departureDate ? format(product.departureDate.toDate(), "PPP") : 'N/A'}</TableCell>
                   <TableCell className="text-right">{product.deliveryDeadline ? format(product.deliveryDeadline.toDate(), "PPP") : 'N/A'}</TableCell>
                 </TableRow>
