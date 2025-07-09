@@ -444,8 +444,8 @@ function ExporterDashboardPage() {
                 <TableHead>Product</TableHead>
                 <TableHead>Destination</TableHead>
                 <TableHead>Departure Date</TableHead>
-                <TableHead className="text-center">Status</TableHead>
                 <TableHead className="text-right">Delivery Deadline</TableHead>
+                <TableHead className="text-center">Status</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -454,6 +454,7 @@ function ExporterDashboardPage() {
                   <TableCell className="font-medium">{product.productName || 'N/A'}</TableCell>
                   <TableCell>{product.destination?.portOfDelivery || 'N/A'}</TableCell>
                   <TableCell>{product.departureDate ? format(product.departureDate.toDate(), "PPP") : 'N/A'}</TableCell>
+                  <TableCell className="text-right">{product.deliveryDeadline ? format(product.deliveryDeadline.toDate(), "PPP") : 'N/A'}</TableCell>
                   <TableCell className="text-center">
                     {product.status === 'draft' ? (
                        <Button 
@@ -473,7 +474,6 @@ function ExporterDashboardPage() {
                       </Badge>
                     )}
                   </TableCell>
-                  <TableCell className="text-right">{product.deliveryDeadline ? format(product.deliveryDeadline.toDate(), "PPP") : 'N/A'}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -488,5 +488,3 @@ function ExporterDashboardPage() {
     </div>
   );
 }
-
-    
