@@ -3,7 +3,6 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import Link from "next/link";
-import { Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { AuthButton } from "@/components/auth-button";
@@ -65,10 +64,6 @@ const Header = () => (
       </div>
       <div className="flex flex-1 items-center justify-end space-x-2">
         <nav className="flex items-center gap-2 sm:gap-2">
-           <Button variant="ghost" size="icon">
-                <Bell className="h-5 w-5" />
-                <span className="sr-only">Notifications</span>
-            </Button>
           <AuthButton />
         </nav>
       </div>

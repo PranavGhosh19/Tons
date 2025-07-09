@@ -7,6 +7,7 @@ import { onAuthStateChanged, signOut, User } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Bell } from "lucide-react";
 
 export function AuthButton() {
   const [user, setUser] = useState<User | null>(null);
@@ -32,10 +33,7 @@ export function AuthButton() {
 
   if (loading) {
     return (
-      <>
-        <Skeleton className="h-10 w-20 rounded-md" />
-        <Skeleton className="h-10 w-24 rounded-md" />
-      </>
+      <Skeleton className="h-10 w-48 rounded-md" />
     );
   }
 
@@ -54,6 +52,10 @@ export function AuthButton() {
 
   return (
     <>
+      <Button variant="ghost" size="icon">
+        <Bell className="h-5 w-5" />
+        <span className="sr-only">Notifications</span>
+      </Button>
       <Button variant="ghost" asChild>
         <Link href="/login">Log In</Link>
       </Button>
