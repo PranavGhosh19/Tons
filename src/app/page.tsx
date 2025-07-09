@@ -29,7 +29,7 @@ export default function Home() {
                     <Link href="/login">Carrier Portal</Link>
                 </Button>
             </div>
-            <Link href="#" className="text-sm underline underline-offset-4 hover:text-primary">
+            <Link href="/how-it-works" className="text-sm underline underline-offset-4 hover:text-primary">
                 How Shipping Battlefield Works
             </Link>
           </div>
