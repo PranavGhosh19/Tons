@@ -168,6 +168,16 @@ function ExporterDashboardPage() {
     }
   }, [searchParams, user, router, toast]);
 
+  useEffect(() => {
+    if (departureDate && deliveryDeadline && departureDate > deliveryDeadline) {
+      setDeliveryDeadline(undefined);
+      toast({
+        title: "Info",
+        description: "Delivery deadline was cleared as it cannot be before the departure date.",
+      });
+    }
+  }, [departureDate, deliveryDeadline, toast]);
+
   const resetForm = () => {
     setProductName("");
     setCargoType("");
@@ -384,14 +394,20 @@ function ExporterDashboardPage() {
                             <Button
                             variant={"outline"}
                             className={cn("justify-start text-left font-normal", !deliveryDeadline && "text-muted-foreground")}
-                            disabled={isSubmitting}
+                            disabled={isSubmitting || !departureDate}
                             >
                             <CalendarIcon className="mr-2 h-4 w-4" />
                             {deliveryDeadline ? format(deliveryDeadline, "PPP") : <span>Pick a date</span>}
                             </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0">
-                            <Calendar mode="single" selected={deliveryDeadline} onSelect={setDeliveryDeadline} initialFocus />
+                            <Calendar
+                                mode="single"
+                                selected={deliveryDeadline}
+                                onSelect={setDeliveryDeadline}
+                                disabled={departureDate ? { before: departureDate } : undefined}
+                                initialFocus
+                            />
                         </PopoverContent>
                         </Popover>
                     </div>
@@ -455,7 +471,7 @@ function ExporterDashboardPage() {
                 <TableHead>Product</TableHead>
                 <TableHead>Destination</TableHead>
                 <TableHead>Departure Date</TableHead>
-                <TableHead className="text-right">Delivery Deadline</TableHead>
+                <TableHead>Delivery Deadline</TableHead>
                 <TableHead className="text-center">Status</TableHead>
               </TableRow>
             </TableHeader>
@@ -465,7 +481,7 @@ function ExporterDashboardPage() {
                   <TableCell className="font-medium">{product.productName || 'N/A'}</TableCell>
                   <TableCell>{product.destination?.portOfDelivery || 'N/A'}</TableCell>
                   <TableCell>{product.departureDate ? format(product.departureDate.toDate(), "PPP") : 'N/A'}</TableCell>
-                  <TableCell className="text-right">{product.deliveryDeadline ? format(product.deliveryDeadline.toDate(), "PPP") : 'N/A'}</TableCell>
+                  <TableCell>{product.deliveryDeadline ? format(product.deliveryDeadline.toDate(), "PPP") : 'N/A'}</TableCell>
                   <TableCell className="text-center">
                     {product.status === 'draft' ? (
                        <Button 
@@ -499,5 +515,3 @@ function ExporterDashboardPage() {
     </div>
   );
 }
-
-    
