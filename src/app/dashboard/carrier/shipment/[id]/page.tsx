@@ -107,6 +107,17 @@ export default function CarrierShipmentDetailPage() {
       toast({ title: "Error", description: "Please enter a bid amount.", variant: "destructive" });
       return;
     }
+
+    const newBidAmount = parseFloat(bidAmount);
+    if (lowestBid !== null && newBidAmount >= lowestBid) {
+      toast({
+        title: "Invalid Bid",
+        description: `Your bid must be lower than the current lowest bid of $${lowestBid.toLocaleString()}.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (shipment?.status !== 'live') {
       toast({ title: "Info", description: "This shipment is not currently accepting bids.", variant: "default" });
       return;
@@ -116,7 +127,7 @@ export default function CarrierShipmentDetailPage() {
       await addDoc(collection(db, "shipments", shipmentId, "bids"), {
         carrierId: user.uid,
         carrierName: carrierName,
-        bidAmount: parseFloat(bidAmount),
+        bidAmount: newBidAmount,
         createdAt: Timestamp.now(),
       });
       toast({ title: "Success", description: "Your bid has been placed." });
