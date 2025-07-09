@@ -4,7 +4,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from 'next/navigation';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { collection, addDoc, query, getDocs, DocumentData, Timestamp, where, doc, getDoc } from 'firebase/firestore';
+import { collection, addDoc, query, getDocs, DocumentData, Timestamp, where, doc, getDoc, updateDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { Button } from "@/components/ui/button";
 import {
@@ -52,6 +52,7 @@ export default function ExporterDashboardPage() {
   const [specialInstructions, setSpecialInstructions] = useState("");
   
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmittingGoLive, setIsSubmittingGoLive] = useState<string | null>(null);
 
   const router = useRouter();
   const { toast } = useToast();
@@ -173,6 +174,23 @@ export default function ExporterDashboardPage() {
       setIsSubmitting(false);
     }
   };
+
+  const handleGoLive = async (shipmentId: string) => {
+    if (!user) return;
+    setIsSubmittingGoLive(shipmentId);
+    try {
+        const shipmentDocRef = doc(db, "shipments", shipmentId);
+        await updateDoc(shipmentDocRef, { status: 'live' });
+        toast({ title: "Success!", description: "Your shipment is now live for bidding."});
+        await fetchProducts(user.uid);
+    } catch (error) {
+        console.error("Error going live: ", error);
+        toast({ title: "Error", description: "Could not make the shipment live.", variant: "destructive" });
+    } finally {
+        setIsSubmittingGoLive(null);
+    }
+  };
+
 
   if (loading || !user) {
     return (
@@ -359,7 +377,17 @@ export default function ExporterDashboardPage() {
                   <TableCell>{product.departureDate ? format(product.departureDate.toDate(), "PPP") : 'N/A'}</TableCell>
                   <TableCell className="text-center">
                     {product.status === 'draft' ? (
-                      <span className="text-muted-foreground">&mdash;</span>
+                       <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            handleGoLive(product.id);
+                        }}
+                        disabled={isSubmittingGoLive === product.id}
+                      >
+                        {isSubmittingGoLive === product.id ? '...' : 'Go Live'}
+                      </Button>
                     ) : (
                       <Badge variant={getStatusVariant(product.status)} className="capitalize">
                         {product.status}
