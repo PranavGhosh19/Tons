@@ -124,10 +124,10 @@ export default function ShipmentDetailPage() {
 
   if (loading) {
     return (
-      <div className="container py-10">
+      <div className="container py-6 md:py-10">
         <Skeleton className="h-8 w-32 mb-8" />
-        <div className="grid md:grid-cols-3 gap-8">
-            <div className="md:col-span-2 space-y-6">
+        <div className="grid lg:grid-cols-3 gap-8">
+            <div className="lg:col-span-2 space-y-6">
                 <Skeleton className="h-48 w-full" />
                 <Skeleton className="h-64 w-full" />
             </div>
@@ -159,7 +159,7 @@ export default function ShipmentDetailPage() {
   const statusInfo = getStatusInfo();
 
   return (
-    <div className="container py-10">
+    <div className="container py-6 md:py-10">
         <div className="flex justify-between items-center mb-6">
             <Button variant="ghost" onClick={() => router.push('/dashboard/exporter')}>
                 <ArrowLeft className="mr-2 h-4 w-4" />
@@ -172,11 +172,11 @@ export default function ShipmentDetailPage() {
                 </Button>
             )}
         </div>
-        <div className="grid md:grid-cols-3 gap-8 items-start">
-            <div className="md:col-span-2 space-y-6">
+        <div className="grid lg:grid-cols-3 gap-8 items-start">
+            <div className="lg:col-span-2 space-y-6">
                 <Card>
                     <CardHeader>
-                        <CardTitle className="text-3xl font-headline">{shipment.productName}</CardTitle>
+                        <CardTitle className="text-2xl sm:text-3xl font-headline">{shipment.productName}</CardTitle>
                         <CardDescription>Shipment Details</CardDescription>
                     </CardHeader>
                     <CardContent className="grid md:grid-cols-2 gap-4 text-sm">
@@ -198,14 +198,14 @@ export default function ShipmentDetailPage() {
                                 {bids.length > 0 ? `A total of ${bids.length} bids have been placed on this shipment.` : "No bids have been placed yet."}
                             </CardDescription>
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="overflow-x-auto">
                             {bids.length > 0 ? (
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
                                             <TableHead>Carrier</TableHead>
                                             <TableHead>Bid Amount (USD)</TableHead>
-                                            <TableHead>Date</TableHead>
+                                            <TableHead className="hidden sm:table-cell">Date</TableHead>
                                             <TableHead className="text-right">Action</TableHead>
                                         </TableRow>
                                     </TableHeader>
@@ -214,7 +214,7 @@ export default function ShipmentDetailPage() {
                                             <TableRow key={bid.id} className={shipment.winningBidId === bid.id ? "bg-green-100 dark:bg-green-900" : ""}>
                                                 <TableCell className="font-medium">{bid.carrierName}</TableCell>
                                                 <TableCell>${bid.bidAmount.toLocaleString()}</TableCell>
-                                                <TableCell>{bid.createdAt ? format(bid.createdAt.toDate(), "Pp") : 'N/A'}</TableCell>
+                                                <TableCell className="hidden sm:table-cell">{bid.createdAt ? format(bid.createdAt.toDate(), "Pp") : 'N/A'}</TableCell>
                                                 <TableCell className="text-right">
                                                     {shipment.status === 'awarded' ? (
                                                         shipment.winningBidId === bid.id && <Badge variant="success">Awarded</Badge>
@@ -236,7 +236,7 @@ export default function ShipmentDetailPage() {
                     </Card>
                  )}
             </div>
-            <div className="space-y-6">
+            <div className="space-y-6 lg:sticky lg:top-24">
                 <Card className="bg-secondary">
                     <CardHeader>
                         <CardTitle>Status</CardTitle>

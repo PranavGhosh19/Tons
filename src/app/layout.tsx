@@ -6,6 +6,8 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { AuthButton } from "@/components/auth-button";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Menu } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Shipping Battlefield",
@@ -53,19 +55,36 @@ const Header = () => (
     )}
   >
     <div className="container flex h-16 items-center">
-      <div className="mr-4 flex items-center">
+      <div className="mr-auto flex items-center">
         <Link
           href="/"
-          className="flex items-center gap-3 font-bold text-lg font-headline"
+          className="flex items-center gap-2 font-bold text-lg font-headline"
         >
           <LogoIcon />
-          <span className="font-bold text-xl">Shipping Battlefield</span>
+          <span className="font-bold text-base sm:text-xl">Shipping Battlefield</span>
         </Link>
       </div>
-      <div className="flex flex-1 items-center justify-end space-x-2">
+      <div className="hidden sm:flex items-center space-x-2">
         <nav className="flex items-center gap-2 sm:gap-2">
           <AuthButton />
         </nav>
+      </div>
+       <div className="sm:hidden">
+        <Sheet>
+          <SheetTrigger asChild>
+            <Button variant="ghost" size="icon">
+              <Menu className="h-6 w-6" />
+              <span className="sr-only">Toggle Menu</span>
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="right">
+            <div className="flex flex-col gap-4 p-4">
+               <nav className="flex flex-col items-start gap-4">
+                  <AuthButton />
+                </nav>
+            </div>
+          </SheetContent>
+        </Sheet>
       </div>
     </div>
   </header>

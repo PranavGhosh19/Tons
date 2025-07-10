@@ -31,8 +31,8 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const PageSkeleton = () => (
-    <div className="container py-10">
-        <div className="flex justify-between items-center mb-8">
+    <div className="container py-6 md:py-10">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
             <Skeleton className="h-10 w-48" />
             <Skeleton className="h-10 w-48" />
         </div>
@@ -305,12 +305,12 @@ function ExporterDashboardPage() {
 
 
   return (
-    <div className="container py-10">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold font-headline">My Shipments</h1>
+    <div className="container py-6 md:py-10">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
+        <h1 className="text-2xl sm:text-3xl font-bold font-headline">My Shipments</h1>
         <Dialog open={open} onOpenChange={handleOpenChange}>
           <DialogTrigger asChild>
-            <Button onClick={() => setOpen(true)}>
+            <Button onClick={() => setOpen(true)} className="w-full sm:w-auto">
               <PlusCircle className="mr-2 h-4 w-4" /> New Shipment Request
             </Button>
           </DialogTrigger>
@@ -318,7 +318,7 @@ function ExporterDashboardPage() {
             <DialogHeader>
               <DialogTitle className="text-2xl font-headline">{editingShipmentId ? 'Edit Shipment' : 'New Shipment'}</DialogTitle>
             </DialogHeader>
-            <div className="grid gap-8 py-4">
+            <div className="grid gap-6 py-4">
               <Card className="bg-secondary">
                 <CardHeader><CardTitle>Product & Cargo Details</CardTitle></CardHeader>
                 <CardContent className="grid md:grid-cols-2 gap-6">
@@ -375,7 +375,7 @@ function ExporterDashboardPage() {
                         <PopoverTrigger asChild>
                             <Button
                             variant={"outline"}
-                            className={cn("justify-start text-left font-normal", !departureDate && "text-muted-foreground")}
+                            className={cn("w-full justify-start text-left font-normal", !departureDate && "text-muted-foreground")}
                             disabled={isSubmitting}
                             >
                             <CalendarIcon className="mr-2 h-4 w-4" />
@@ -393,7 +393,7 @@ function ExporterDashboardPage() {
                         <PopoverTrigger asChild>
                             <Button
                             variant={"outline"}
-                            className={cn("justify-start text-left font-normal", !deliveryDeadline && "text-muted-foreground")}
+                            className={cn("w-full justify-start text-left font-normal", !deliveryDeadline && "text-muted-foreground")}
                             disabled={isSubmitting || !departureDate}
                             >
                             <CalendarIcon className="mr-2 h-4 w-4" />
@@ -464,14 +464,14 @@ function ExporterDashboardPage() {
       </div>
 
       {products.length > 0 ? (
-        <div className="border rounded-lg">
+        <div className="border rounded-lg overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Product</TableHead>
-                <TableHead>Destination</TableHead>
-                <TableHead>Departure Date</TableHead>
-                <TableHead>Delivery Deadline</TableHead>
+                <TableHead className="hidden md:table-cell">Destination</TableHead>
+                <TableHead className="hidden lg:table-cell">Departure Date</TableHead>
+                <TableHead className="hidden lg:table-cell">Delivery Deadline</TableHead>
                 <TableHead className="text-center">Status</TableHead>
               </TableRow>
             </TableHeader>
@@ -479,9 +479,9 @@ function ExporterDashboardPage() {
               {products.map((product) => (
                 <TableRow key={product.id} onClick={() => router.push(`/dashboard/shipment/${product.id}`)} className="cursor-pointer">
                   <TableCell className="font-medium">{product.productName || 'N/A'}</TableCell>
-                  <TableCell>{product.destination?.portOfDelivery || 'N/A'}</TableCell>
-                  <TableCell>{product.departureDate ? format(product.departureDate.toDate(), "PPP") : 'N/A'}</TableCell>
-                  <TableCell>{product.deliveryDeadline ? format(product.deliveryDeadline.toDate(), "PPP") : 'N/A'}</TableCell>
+                  <TableCell className="hidden md:table-cell">{product.destination?.portOfDelivery || 'N/A'}</TableCell>
+                  <TableCell className="hidden lg:table-cell">{product.departureDate ? format(product.departureDate.toDate(), "PPP") : 'N/A'}</TableCell>
+                  <TableCell className="hidden lg:table-cell">{product.deliveryDeadline ? format(product.deliveryDeadline.toDate(), "PPP") : 'N/A'}</TableCell>
                   <TableCell className="text-center">
                     {product.status === 'draft' ? (
                        <Button 

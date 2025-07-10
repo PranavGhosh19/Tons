@@ -140,10 +140,10 @@ export default function CarrierShipmentDetailPage() {
 
   if (loading || !shipment) {
     return (
-      <div className="container py-10">
+      <div className="container py-6 md:py-10">
         <Skeleton className="h-8 w-32 mb-8" />
-        <div className="grid md:grid-cols-3 gap-8">
-            <div className="md:col-span-2 space-y-6">
+        <div className="grid lg:grid-cols-3 gap-8">
+            <div className="lg:col-span-2 space-y-6">
                 <Skeleton className="h-48 w-full" />
                 <Skeleton className="h-64 w-full" />
             </div>
@@ -156,7 +156,7 @@ export default function CarrierShipmentDetailPage() {
   }
 
   return (
-    <div className="container py-10">
+    <div className="container py-6 md:py-10">
       <div className="mb-6">
           <Button variant="ghost" onClick={() => router.push('/dashboard/carrier')}>
               <ArrowLeft className="mr-2 h-4 w-4" />
@@ -164,11 +164,11 @@ export default function CarrierShipmentDetailPage() {
           </Button>
       </div>
 
-      <div className="grid md:grid-cols-3 gap-8 items-start">
-        <div className="md:col-span-2 space-y-6">
+      <div className="grid lg:grid-cols-3 gap-8 items-start">
+        <div className="lg:col-span-2 space-y-6">
             <Card>
                 <CardHeader>
-                    <CardTitle className="text-3xl font-headline">{shipment.productName}</CardTitle>
+                    <CardTitle className="text-2xl sm:text-3xl font-headline">{shipment.productName}</CardTitle>
                     <CardDescription>From: {shipment.exporterName}</CardDescription>
                 </CardHeader>
                 <CardContent className="grid md:grid-cols-2 gap-4 text-sm">
@@ -182,7 +182,7 @@ export default function CarrierShipmentDetailPage() {
                 </CardContent>
             </Card>
         </div>
-        <div className="space-y-6">
+        <div className="space-y-6 lg:sticky lg:top-24">
             <Card>
               <CardHeader>
                 <CardTitle>Live Bidding</CardTitle>

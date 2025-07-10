@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -51,7 +52,7 @@ const carrierSteps = [
 
 const Step = ({ number, title, description }: { number: number; title: string; description: string }) => (
     <Card className="p-6 bg-[#F1F5F9] dark:bg-secondary">
-        <CardContent className="flex items-start gap-6 p-0">
+        <CardContent className="flex items-start gap-4 sm:gap-6 p-0">
             <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-lg font-bold">
                 {number}
             </div>
@@ -82,16 +83,16 @@ export default function HowItWorksPage() {
 
                     <div className="mx-auto max-w-3xl pt-12">
                         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                            <TabsList className="flex justify-center gap-4 bg-transparent p-0">
+                            <TabsList className="grid w-full grid-cols-2 h-auto">
                                 <TabsTrigger 
                                     value="exporters" 
-                                    className="inline-flex items-center justify-center whitespace-nowrap rounded-lg text-base font-semibold transition-colors h-12 px-6 bg-secondary text-secondary-foreground hover:bg-accent hover:text-accent-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:hover:bg-primary/90"
+                                    className="inline-flex items-center justify-center whitespace-nowrap rounded-lg text-base font-semibold transition-colors h-12 px-4 sm:px-6 bg-secondary text-secondary-foreground hover:bg-accent hover:text-accent-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:hover:bg-primary/90"
                                 >
                                     <User className="mr-2 h-5 w-5" /> For Exporters
                                 </TabsTrigger>
                                 <TabsTrigger 
                                     value="carriers" 
-                                    className="inline-flex items-center justify-center whitespace-nowrap rounded-lg text-base font-semibold transition-colors h-12 px-6 bg-secondary text-secondary-foreground hover:bg-accent hover:text-accent-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:hover:bg-primary/90"
+                                    className="inline-flex items-center justify-center whitespace-nowrap rounded-lg text-base font-semibold transition-colors h-12 px-4 sm:px-6 bg-secondary text-secondary-foreground hover:bg-accent hover:text-accent-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:hover:bg-primary/90"
                                 >
                                     <Truck className="mr-2 h-5 w-5" /> For Carriers
                                 </TabsTrigger>

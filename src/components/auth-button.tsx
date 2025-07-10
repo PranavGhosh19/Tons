@@ -33,17 +33,20 @@ export function AuthButton() {
 
   if (loading) {
     return (
-      <Skeleton className="h-10 w-48 rounded-md" />
+      <div className="flex items-center gap-2">
+        <Skeleton className="h-10 w-20" />
+        <Skeleton className="h-10 w-20" />
+      </div>
     );
   }
 
   if (user) {
     return (
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2 sm:gap-4 flex-col sm:flex-row sm:items-center items-start w-full">
         <span className="text-sm text-muted-foreground hidden sm:inline">
           {user.email}
         </span>
-        <Button variant="ghost" onClick={handleLogout}>
+        <Button variant="ghost" onClick={handleLogout} className="w-full sm:w-auto justify-start">
           Logout
         </Button>
       </div>
@@ -51,17 +54,17 @@ export function AuthButton() {
   }
 
   return (
-    <>
-      <Button variant="ghost" size="icon">
+    <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full">
+      <Button variant="ghost" asChild className="w-full sm:w-auto justify-start">
+        <Link href="/login">Log In</Link>
+      </Button>
+      <Button asChild className="w-full sm:w-auto justify-start">
+        <Link href="/signup">Sign Up</Link>
+      </Button>
+       <Button variant="ghost" size="icon" className="hidden sm:inline-flex">
         <Bell className="h-5 w-5" />
         <span className="sr-only">Notifications</span>
       </Button>
-      <Button variant="ghost" asChild>
-        <Link href="/login">Log In</Link>
-      </Button>
-      <Button asChild>
-        <Link href="/signup">Sign Up</Link>
-      </Button>
-    </>
+    </div>
   );
 }

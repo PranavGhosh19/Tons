@@ -129,7 +129,7 @@ export default function CarrierDashboardPage() {
 
   if (loading || !user) {
     return (
-        <div className="container py-10">
+        <div className="container py-6 md:py-10">
             <div className="flex justify-between items-center mb-8">
                 <Skeleton className="h-10 w-48" />
             </div>
@@ -139,21 +139,21 @@ export default function CarrierDashboardPage() {
   }
 
   return (
-    <div className="container py-10">
+    <div className="container py-6 md:py-10">
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold font-headline">Available Shipments</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold font-headline">Available Shipments</h1>
       </div>
 
       {shipments.length > 0 ? (
-        <div className="border rounded-lg">
+        <div className="border rounded-lg overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Exporter</TableHead>
                 <TableHead>Product</TableHead>
-                <TableHead>Origin</TableHead>
-                <TableHead>Destination</TableHead>
-                <TableHead className="text-right">Delivery Deadline</TableHead>
+                <TableHead className="hidden sm:table-cell">Exporter</TableHead>
+                <TableHead className="hidden md:table-cell">Origin</TableHead>
+                <TableHead className="hidden md:table-cell">Destination</TableHead>
+                <TableHead className="hidden lg:table-cell text-right">Delivery Deadline</TableHead>
                 <TableHead className="text-center">Status</TableHead>
               </TableRow>
             </TableHeader>
@@ -164,7 +164,7 @@ export default function CarrierDashboardPage() {
                     if (shipment.winningCarrierId === user?.uid) {
                         statusBadge = <Badge variant="success">Awarded</Badge>;
                     } else {
-                        statusBadge = <Badge variant="outline">Better luck next time</Badge>;
+                        statusBadge = <Badge variant="outline">Closed</Badge>;
                     }
                 } else {
                     statusBadge = (
@@ -176,11 +176,11 @@ export default function CarrierDashboardPage() {
 
                 return (
                     <TableRow key={shipment.id} onClick={() => handleRowClick(shipment)} className="cursor-pointer">
-                    <TableCell className="font-medium">{shipment.exporterName || 'N/A'}</TableCell>
-                    <TableCell>{shipment.productName || 'N/A'}</TableCell>
-                    <TableCell>{shipment.origin?.portOfLoading || 'N/A'}</TableCell>
-                    <TableCell>{shipment.destination?.portOfDelivery || 'N/A'}</TableCell>
-                    <TableCell className="text-right">{shipment.deliveryDeadline ? format(shipment.deliveryDeadline.toDate(), "PPP") : 'N/A'}</TableCell>
+                    <TableCell className="font-medium">{shipment.productName || 'N/A'}</TableCell>
+                    <TableCell className="hidden sm:table-cell">{shipment.exporterName || 'N/A'}</TableCell>
+                    <TableCell className="hidden md:table-cell">{shipment.origin?.portOfLoading || 'N/A'}</TableCell>
+                    <TableCell className="hidden md:table-cell">{shipment.destination?.portOfDelivery || 'N/A'}</TableCell>
+                    <TableCell className="hidden lg:table-cell text-right">{shipment.deliveryDeadline ? format(shipment.deliveryDeadline.toDate(), "PPP") : 'N/A'}</TableCell>
                     <TableCell className="text-center">
                         {statusBadge}
                     </TableCell>
