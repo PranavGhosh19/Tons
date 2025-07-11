@@ -507,7 +507,7 @@ function ExporterDashboardPage() {
           </Table>
         </div>
       ) : (
-        <div className="border rounded-lg p-12 text-center bg-background">
+        <div className="border rounded-lg p-12 text-center bg-white">
           <h2 className="text-xl font-semibold mb-2">No shipment requests yet</h2>
           <p className="text-muted-foreground">Click "New Shipment Request" to get started.</p>
         </div>
