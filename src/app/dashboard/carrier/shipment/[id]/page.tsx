@@ -166,7 +166,7 @@ export default function CarrierShipmentDetailPage() {
 
       <div className="grid lg:grid-cols-3 gap-8 items-start">
         <div className="lg:col-span-2 space-y-6">
-            <Card>
+            <Card className="bg-white dark:bg-card">
                 <CardHeader>
                     <CardTitle className="text-2xl sm:text-3xl font-headline">{shipment.productName}</CardTitle>
                     <CardDescription>From: {shipment.exporterName}</CardDescription>
@@ -183,7 +183,7 @@ export default function CarrierShipmentDetailPage() {
             </Card>
         </div>
         <div className="space-y-6 lg:sticky lg:top-24">
-            <Card>
+            <Card className="bg-white dark:bg-card">
               <CardHeader>
                 <CardTitle>Live Bidding</CardTitle>
                 <CardDescription>Place your bid for this shipment.</CardDescription>
