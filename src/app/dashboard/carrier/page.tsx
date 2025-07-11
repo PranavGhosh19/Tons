@@ -191,7 +191,7 @@ export default function CarrierDashboardPage() {
           </Table>
         </div>
       ) : (
-        <div className="border rounded-lg p-12 text-center bg-background">
+        <div className="border rounded-lg p-12 text-center bg-white dark:bg-card">
           <h2 className="text-xl font-semibold mb-2">No shipments available right now</h2>
           <p className="text-muted-foreground">Please check back later for new opportunities.</p>
         </div>
@@ -271,3 +271,5 @@ export default function CarrierDashboardPage() {
     </div>
   );
 }
+
+    
