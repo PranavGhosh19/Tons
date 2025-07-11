@@ -5,7 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { AuthButton } from "@/components/auth-button";
+import { AuthButton, NavLinks } from "@/components/auth-button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Menu } from "lucide-react";
 
@@ -63,27 +63,30 @@ const Header = () => (
           <LogoIcon />
           <span className="hidden sm:block font-bold text-base sm:text-xl">Shipping Battlefield</span>
         </Link>
-        <div className="hidden sm:flex items-center">
-            <AuthButton />
-        </div>
+        <NavLinks />
       </div>
       
-       <div className="ml-auto sm:hidden">
-        <Sheet>
-          <SheetTrigger asChild>
-            <Button variant="ghost" size="icon">
-              <Menu className="h-6 w-6" />
-              <span className="sr-only">Toggle Menu</span>
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="right">
-            <div className="flex flex-col gap-4 p-4">
-               <nav className="flex flex-col items-start gap-4">
-                  <AuthButton />
-                </nav>
-            </div>
-          </SheetContent>
-        </Sheet>
+       <div className="ml-auto flex items-center gap-2">
+         <div className="hidden sm:flex">
+            <AuthButton />
+         </div>
+        <div className="sm:hidden">
+            <Sheet>
+            <SheetTrigger asChild>
+                <Button variant="ghost" size="icon">
+                <Menu className="h-6 w-6" />
+                <span className="sr-only">Toggle Menu</span>
+                </Button>
+            </SheetTrigger>
+            <SheetContent side="right">
+                <div className="flex flex-col gap-4 p-4">
+                <nav className="flex flex-col items-start gap-4">
+                    <AuthButton />
+                    </nav>
+                </div>
+            </SheetContent>
+            </Sheet>
+        </div>
       </div>
     </div>
   </header>

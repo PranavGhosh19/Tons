@@ -19,6 +19,36 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { User as UserIcon, LayoutDashboard, LogOut } from "lucide-react";
 
+export function NavLinks() {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setUser(user);
+      setLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  if (loading) {
+      return <div className="hidden sm:flex items-center gap-2"><Skeleton className="h-6 w-16" /><Skeleton className="h-6 w-16" /><Skeleton className="h-6 w-16" /></div>;
+  }
+
+  if (user) {
+    return (
+        <nav className="hidden sm:flex items-center gap-2 text-sm font-medium text-muted-foreground">
+          <Link href="/dashboard" className="hover:text-primary transition-colors">Dashboard</Link>
+          <Link href="#" className="hover:text-primary transition-colors">Shipments</Link>
+          <Link href="#" className="hover:text-primary transition-colors">Carriers</Link>
+          <Link href="#" className="hover:text-primary transition-colors">Analytics</Link>
+        </nav>
+    );
+  }
+
+  return null;
+}
+
 export function AuthButton() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -43,22 +73,13 @@ export function AuthButton() {
 
   if (loading) {
     return (
-      <div className="flex items-center gap-2">
         <Skeleton className="h-10 w-20" />
-        <Skeleton className="h-10 w-20" />
-      </div>
     );
   }
 
   if (user) {
     return (
       <div className="flex items-center gap-2 sm:gap-4">
-        <nav className="hidden sm:flex items-center gap-2 text-sm font-medium text-muted-foreground">
-          <Link href="/dashboard" className="hover:text-primary transition-colors">Dashboard</Link>
-          <Link href="#" className="hover:text-primary transition-colors">Shipments</Link>
-          <Link href="#" className="hover:text-primary transition-colors">Carriers</Link>
-          <Link href="#" className="hover:text-primary transition-colors">Analytics</Link>
-        </nav>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="relative h-10 w-10 rounded-full">
