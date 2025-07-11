@@ -8,7 +8,6 @@ import { onAuthStateChanged, signOut, User } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Bell } from "lucide-react";
 
 export function AuthButton() {
   const [user, setUser] = useState<User | null>(null);
@@ -44,14 +43,6 @@ export function AuthButton() {
   if (user) {
     return (
       <div className="flex items-center gap-2 sm:gap-4 flex-col sm:flex-row sm:items-center items-start w-full">
-         <Button variant="ghost" size="icon" className="hidden sm:inline-flex relative">
-            <Bell className="h-5 w-5" />
-            <span className="absolute top-2 right-2 flex h-2.5 w-2.5">
-                <span className="animate-ping-slow absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary"></span>
-            </span>
-            <span className="sr-only">Notifications</span>
-        </Button>
         <span className="text-sm text-muted-foreground hidden sm:inline">
           {user.email}
         </span>
@@ -64,10 +55,6 @@ export function AuthButton() {
 
   return (
     <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full">
-       <Button variant="ghost" size="icon" className="hidden sm:inline-flex">
-        <Bell className="h-5 w-5" />
-        <span className="sr-only">Notifications</span>
-      </Button>
       <Button variant="ghost" asChild className="w-full sm:w-auto justify-start">
         <Link href="/login">Log In</Link>
       </Button>
