@@ -16,24 +16,24 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { User as UserIcon, LayoutDashboard, LogOut, Bell } from "lucide-react";
+import { User as UserIcon, LogOut, Bell, Settings, LifeBuoy } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { doc, getDoc } from "firebase/firestore";
 import { Skeleton } from "./ui/skeleton";
 
 const exporterNavLinks = [
   { href: "/dashboard", label: "Dashboard" },
-  { href: "/shipments", label: "Shipments" },
-  { href: "/carriers", label: "Carriers" },
-  { href: "/analytics", label: "Analytics" },
+  { href: "/dashboard/shipment", label: "Shipments" },
+  { href: "/dashboard/carrier", label: "Carriers" },
+  { href: "/dashboard/analytics", label: "Analytics" },
 ];
 
 const carrierNavLinks = [
-  { href: "/dashboard/carrier", label: "Dashboard" },
-  { href: "/dashboard/carrier/shipments", label: "Find Shipments" },
-  { href: "/dashboard/carrier/bids", label: "My Bids" },
-  { href: "/dashboard/carrier/earnings", label: "Earnings" },
-];
+    { href: "/dashboard/carrier", label: "Dashboard" },
+    { href: "/dashboard/carrier/shipments", label: "Find Shipments" },
+    { href: "/dashboard/carrier/bids", label: "My Bids" },
+    { href: "/dashboard/carrier/earnings", label: "Earnings" },
+  ];
 
 export function NavLinks() {
   const [user, setUser] = useState<User | null>(null);
@@ -146,23 +146,20 @@ export function AuthButton() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-56" align="end" forceMount>
-            <DropdownMenuLabel className="font-normal">
-              <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium leading-none">My Account</p>
-                <p className="text-xs leading-none text-muted-foreground">
-                  {user.email}
-                </p>
-              </div>
-            </DropdownMenuLabel>
+            <DropdownMenuLabel>My Account</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => router.push('/dashboard')}>
-              <LayoutDashboard className="mr-2 h-4 w-4" />
-              <span>Dashboard</span>
+            <DropdownMenuItem onClick={() => router.push('/settings')}>
+                <Settings className="mr-2 h-4 w-4" />
+                <span>Settings</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => router.push('/support')}>
+                <LifeBuoy className="mr-2 h-4 w-4" />
+                <span>Support</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleLogout}>
               <LogOut className="mr-2 h-4 w-4" />
-              <span>Log out</span>
+              <span>Logout</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
