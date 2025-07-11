@@ -487,6 +487,7 @@ function ExporterDashboardPage() {
                        <Button 
                         variant="outline" 
                         size="sm" 
+                        className="hover:bg-green-500 hover:text-white"
                         onClick={(e) => {
                             e.stopPropagation();
                             handleGoLive(product.id);
