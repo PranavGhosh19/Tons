@@ -3,14 +3,13 @@ import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyAIkgVfiVwZIZcnhyRxmYauewGaoN2YwXs",
-  authDomain: "wisely-e0d87.firebaseapp.com",
-  databaseURL: "https://wisely-e0d87-default-rtdb.firebaseio.com",
-  projectId: "wisely-e0d87",
-  storageBucket: "wisely-e0d87.appspot.com",
-  messagingSenderId: "1052871511950",
-  appId: "1:1052871511950:web:18578588d7d8f08c715edf",
-  measurementId: "G-GFQ4ETVDXX"
+  apiKey: "AIzaSyCCgvXgIEWoueN6dkqn1P4AcVWt_G_QSVw",
+  authDomain: "shipping-battlefield.firebaseapp.com",
+  databaseURL: "https://shipping-battlefield-default-rtdb.firebaseio.com",
+  projectId: "shipping-battlefield",
+  storageBucket: "shipping-battlefield.firebasestorage.app",
+  messagingSenderId: "154914599500",
+  appId: "1:154914599500:web:2c3ea470544b4cc5433ae9"
 };
 
 // Initialize Firebase
