@@ -17,6 +17,7 @@ import { Label } from "@/components/ui/label";
 import { Send, Info } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
 export default function CarrierDashboardPage() {
   const [user, setUser] = useState<User | null>(null);
@@ -116,7 +117,7 @@ export default function CarrierDashboardPage() {
   const getStatusVariant = (status: string) => {
     switch (status) {
       case 'live':
-        return 'default';
+        return 'success';
       case 'awarded':
         return 'success';
       case 'draft':
@@ -168,7 +169,7 @@ export default function CarrierDashboardPage() {
                     }
                 } else {
                     statusBadge = (
-                        <Badge variant={getStatusVariant(shipment.status)} className="capitalize">
+                        <Badge variant={getStatusVariant(shipment.status)} className={cn("capitalize", { "animate-blink bg-green-500/80": shipment.status === 'live' })}>
                             {shipment.status}
                         </Badge>
                     );
@@ -271,5 +272,3 @@ export default function CarrierDashboardPage() {
     </div>
   );
 }
-
-    
