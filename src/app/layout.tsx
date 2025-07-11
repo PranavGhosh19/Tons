@@ -80,9 +80,15 @@ const Header = () => (
             </SheetTrigger>
             <SheetContent side="right">
                 <div className="flex flex-col gap-4 p-4">
-                <nav className="flex flex-col items-start gap-4">
-                    <AuthButton />
+                    <nav className="flex flex-col items-start gap-4">
+                        <Link href="/dashboard" className="hover:text-primary transition-colors">Dashboard</Link>
+                        <Link href="#" className="hover:text-primary transition-colors">Shipments</Link>
+                        <Link href="#" className="hover:text-primary transition-colors">Carriers</Link>
+                        <Link href="#" className="hover:text-primary transition-colors">Analytics</Link>
                     </nav>
+                    <div className="mt-auto">
+                        <AuthButton />
+                    </div>
                 </div>
             </SheetContent>
             </Sheet>
