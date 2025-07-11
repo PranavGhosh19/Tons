@@ -107,10 +107,10 @@ export default function CarrierShipmentDetailPage() {
     }
 
     const newBidAmount = parseFloat(bidAmount);
-    if (lowestBidData && newBidAmount >= lowestBidData.bidAmount) {
+    if (lowestBidData && newBidAmount > lowestBidData.bidAmount) {
       toast({
         title: "Invalid Bid",
-        description: `Your bid must be lower than the current lowest bid of $${lowestBidData.bidAmount.toLocaleString()}.`,
+        description: `Your bid must be less than or equal to the current lowest bid of $${lowestBidData.bidAmount.toLocaleString()}.`,
         variant: "destructive",
       });
       return;
