@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { AuthButton, NavLinks } from "@/components/auth-button";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Menu } from "lucide-react";
 
 export const metadata: Metadata = {
@@ -78,20 +78,23 @@ const Header = () => (
                 <span className="sr-only">Toggle Menu</span>
                 </Button>
             </SheetTrigger>
-            <SheetContent side="right">
-                <SheetHeader>
-                    <SheetTitle className="sr-only">Menu</SheetTitle>
+            <SheetContent side="right" className="pt-16">
+                <SheetHeader className="text-left">
+                    <SheetTitle>Menu</SheetTitle>
+                    <SheetDescription className="sr-only">
+                        Main navigation menu for Shipping Battlefield.
+                    </SheetDescription>
                 </SheetHeader>
-                <div className="flex flex-col gap-4 p-4">
+                <div className="flex flex-col gap-4 py-4">
                     <nav className="flex flex-col items-start gap-4">
                         <Link href="/dashboard" className="hover:text-primary transition-colors">Dashboard</Link>
                         <Link href="/shipments" className="hover:text-primary transition-colors">Shipments</Link>
                         <Link href="/carriers" className="hover:text-primary transition-colors">Carriers</Link>
                         <Link href="/analytics" className="hover:text-primary transition-colors">Analytics</Link>
                     </nav>
-                    <div className="mt-auto">
-                        <AuthButton />
-                    </div>
+                </div>
+                <div className="absolute bottom-4 right-4 left-4">
+                    <AuthButton />
                 </div>
             </SheetContent>
             </Sheet>
