@@ -1,34 +1,46 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    match /users/{userId} {
-      allow read, update: if request.auth != null && request.auth.uid == userId;
-      allow create: if request.auth != null && request.resource.id == request.auth.uid;
+    // Helper function to check if user is an exporter
+    function isExporter(userId) {
+      return get(/databases/$(database)/documents/users/$(userId)).data.userType == 'exporter';
     }
 
+    // Helper function to check if user is a carrier
+    function isCarrier(userId) {
+      return get(/databases/$(database)/documents/users/$(userId)).data.userType == 'carrier';
+    }
+
+    // Users can only read and write their own data
+    match /users/{userId} {
+      allow read, update: if request.auth.uid == userId;
+      allow create: if request.auth.uid == userId && request.resource.data.email == request.auth.token.email;
+    }
+
+    // Rules for the shipments collection
     match /shipments/{shipmentId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null && request.resource.data.exporterId == request.auth.uid;
-      allow update: if request.auth != null && resource.data.exporterId == request.auth.uid;
-      
-      // Allow create and update only if the payload contains the expected fields.
-      // This is a good practice to prevent accidental or malicious data writes.
-      allow create, update: if request.resource.data.keys().hasAll([
-          'productName', 'hsnCode', 'shipmentType', 'modeOfShipment', 'cargo', 
-          'departureDate', 'deliveryDeadline', 'origin', 'destination', 
-          'specialInstructions', 'exporterId', 'exporterName', 'status', 'createdAt'
-      ]) && request.resource.data.cargo.keys().hasAll(['type', 'weight', 'dimensions']);
-      
+      // Exporters can create shipments for themselves
+      allow create: if request.auth.uid != null && isExporter(request.auth.uid) && request.resource.data.exporterId == request.auth.uid;
+
+      // Exporters can read/update their own shipments. Carriers can read all shipments.
+      allow read: if request.auth.uid != null && (
+                    (isExporter(request.auth.uid) && resource.data.exporterId == request.auth.uid) ||
+                    isCarrier(request.auth.uid)
+                  );
+      allow update: if request.auth.uid != null && isExporter(request.auth.uid) && resource.data.exporterId == request.auth.uid;
+
+      // Rules for the bids subcollection
       match /bids/{bidId} {
-        allow read: if request.auth != null;
-        allow create: if request.auth != null && request.resource.data.carrierId == request.auth.uid;
-        // Bids are immutable, so no update/delete rules needed.
+        // The shipment's exporter can read bids.
+        allow read: if request.auth.uid != null && (
+                      (isExporter(request.auth.uid) && get(/databases/$(database)/documents/shipments/$(shipmentId)).data.exporterId == request.auth.uid) ||
+                      isCarrier(request.auth.uid) // Carriers can see other bids
+                    );
+        // Carriers can create bids for themselves
+        allow create: if request.auth.uid != null && isCarrier(request.auth.uid) && request.resource.data.carrierId == request.auth.uid;
       }
     }
   }
 }
-
-    
