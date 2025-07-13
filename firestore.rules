@@ -4,39 +4,31 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Users can only read and write to their own user document.
     match /users/{userId} {
       allow read, update: if request.auth != null && request.auth.uid == userId;
-      allow create: if request.auth != null;
+      allow create: if request.auth != null && request.resource.id == request.auth.uid;
     }
 
     match /shipments/{shipmentId} {
-      // Exporters can create, read, and update their own shipments.
-      allow create: if request.auth != null 
-                    && request.resource.data.exporterId == request.auth.uid
-                    && "exporterName" in request.resource.data
-                    && "productName" in request.resource.data
-                    && "shipmentType" in request.resource.data
-                    && "modeOfShipment" in request.resource.data
-                    && "hsnCode" in request.resource.data
-                    && "origin" in request.resource.data
-                    && "destination" in request.resource.data
-                    && "departureDate" in request.resource.data
-                    && "deliveryDeadline" in request.resource.data;
-
-      allow read: if request.auth != null; // Allow all authenticated users to read shipments for bidding.
-      
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && request.resource.data.exporterId == request.auth.uid;
       allow update: if request.auth != null && resource.data.exporterId == request.auth.uid;
-
-      // Bids subcollection rules
+      
+      // Allow create and update only if the payload contains the expected fields.
+      // This is a good practice to prevent accidental or malicious data writes.
+      allow create, update: if request.resource.data.keys().hasAll([
+          'productName', 'hsnCode', 'shipmentType', 'modeOfShipment', 'cargo', 
+          'departureDate', 'deliveryDeadline', 'origin', 'destination', 
+          'specialInstructions', 'exporterId', 'exporterName', 'status', 'createdAt'
+      ]) && request.resource.data.cargo.keys().hasAll(['type', 'weight', 'dimensions']);
+      
       match /bids/{bidId} {
-        // Exporter who owns the shipment can read bids.
         allow read: if request.auth != null;
-        
-        // Carriers can create bids on shipments. They cannot update them.
-        allow create: if request.auth != null 
-                      && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userType == 'carrier';
+        allow create: if request.auth != null && request.resource.data.carrierId == request.auth.uid;
+        // Bids are immutable, so no update/delete rules needed.
       }
     }
   }
 }
+
+    
