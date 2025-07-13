@@ -77,6 +77,7 @@ function ExporterDashboardPage() {
   const [editingShipmentId, setEditingShipmentId] = useState<string | null>(null);
   
   // Form state
+  const [shipmentType, setShipmentType] = useState("");
   const [productName, setProductName] = useState("");
   const [hsnCode, setHsnCode] = useState("");
   const [modeOfShipment, setModeOfShipment] = useState("");
@@ -176,6 +177,7 @@ function ExporterDashboardPage() {
                          return;
                     }
 
+                    setShipmentType(data.shipmentType || "");
                     setProductName(data.productName || "");
                     setHsnCode(data.hsnCode || "");
                     setModeOfShipment(data.modeOfShipment || "");
@@ -219,6 +221,7 @@ function ExporterDashboardPage() {
   }, [departureDate, deliveryDeadline, toast]);
 
   const resetForm = () => {
+    setShipmentType("");
     setProductName("");
     setHsnCode("");
     setModeOfShipment("");
@@ -261,6 +264,7 @@ function ExporterDashboardPage() {
     setIsSubmitting(true);
     
     const shipmentPayload = {
+      shipmentType,
       productName,
       hsnCode,
       modeOfShipment,
@@ -370,6 +374,19 @@ function ExporterDashboardPage() {
               <Card className="bg-secondary">
                 <CardHeader><CardTitle>Product & Cargo Details</CardTitle></CardHeader>
                 <CardContent className="grid md:grid-cols-2 gap-6">
+                  <div className="grid gap-2 md:col-span-2">
+                    <Label htmlFor="shipment-type">Shipment</Label>
+                    <Select value={shipmentType} onValueChange={setShipmentType} disabled={isSubmitting}>
+                      <SelectTrigger id="shipment-type">
+                        <SelectValue placeholder="Select shipment type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="EXPORT">EXPORT</SelectItem>
+                        <SelectItem value="IMPORT">IMPORT</SelectItem>
+                        <SelectItem value="COASTAL MOVEMENT">COASTAL MOVEMENT</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                   <div className="grid gap-2">
                     <Label htmlFor="product-name">Product Name</Label>
                     <Input id="product-name" placeholder="e.g., Electronics, Textiles" value={productName} onChange={e => setProductName(e.target.value)} disabled={isSubmitting} />

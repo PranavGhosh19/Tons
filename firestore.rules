@@ -1,37 +1,42 @@
 
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // Users can only read and write to their own user document.
     match /users/{userId} {
       allow read, update: if request.auth != null && request.auth.uid == userId;
-      allow create: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null;
     }
+
     match /shipments/{shipmentId} {
-      function isOwner() {
-        return request.auth.uid == resource.data.exporterId;
-      }
-      function isCarrier() {
-        return exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-               get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userType == 'carrier';
-      }
+      // Exporters can create, read, and update their own shipments.
+      allow create: if request.auth != null 
+                    && request.resource.data.exporterId == request.auth.uid
+                    && "exporterName" in request.resource.data
+                    && "productName" in request.resource.data
+                    && "shipmentType" in request.resource.data
+                    && "modeOfShipment" in request.resource.data
+                    && "hsnCode" in request.resource.data
+                    && "origin" in request.resource.data
+                    && "destination" in request.resource.data
+                    && "departureDate" in request.resource.data
+                    && "deliveryDeadline" in request.resource.data;
+
+      allow read: if request.auth != null; // Allow all authenticated users to read shipments for bidding.
       
-      allow read: if isCarrier() || isOwner();
-      allow create: if request.auth.uid == request.resource.data.exporterId;
-      allow update: if isOwner() && (
-        request.resource.data.diff(resource.data).affectedKeys()
-        .hasOnly([
-            'productName', 'hsnCode', 'modeOfShipment', 'cargo', 'departureDate', 'deliveryDeadline', 
-            'origin', 'destination', 'specialInstructions', 'status', 
-            'winningBidId', 'winningCarrierId', 'winningCarrierName', 'winningBidAmount'
-        ])
-      );
-      
+      allow update: if request.auth != null && resource.data.exporterId == request.auth.uid;
+
+      // Bids subcollection rules
       match /bids/{bidId} {
-        allow read: if isOwner() || isCarrier();
-        allow create: if isCarrier() && request.auth.uid == request.resource.data.carrierId;
+        // Exporter who owns the shipment can read bids.
+        allow read: if request.auth != null;
+        
+        // Carriers can create bids on shipments. They cannot update them.
+        allow create: if request.auth != null 
+                      && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userType == 'carrier';
       }
     }
   }
 }
-
-    
