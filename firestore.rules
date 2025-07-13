@@ -6,31 +6,29 @@ service cloud.firestore {
       allow read, update: if request.auth != null && request.auth.uid == userId;
       allow create: if request.auth != null && request.auth.uid == userId;
     }
-
     match /shipments/{shipmentId} {
-      // Exporters can create/read/update their own shipments
-      allow create: if request.auth != null && request.resource.data.exporterId == request.auth.uid;
-      allow read, update: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userType == 'exporter' && resource.data.exporterId == request.auth.uid;
+      function isOwner() {
+        return request.auth.uid == resource.data.exporterId;
+      }
+      function isCarrier() {
+        return exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+               get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userType == 'carrier';
+      }
       
-      // Carriers can read any shipment
-      allow read: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userType == 'carrier';
+      allow read: if isCarrier() || isOwner();
+      allow create: if request.auth.uid == request.resource.data.exporterId;
+      allow update: if isOwner() && (
+        request.resource.data.diff(resource.data).affectedKeys()
+        .hasOnly([
+            'productName', 'hsnCode', 'modeOfShipment', 'cargo', 'departureDate', 'deliveryDeadline', 
+            'origin', 'destination', 'specialInstructions', 'status', 
+            'winningBidId', 'winningCarrierId', 'winningCarrierName', 'winningBidAmount'
+        ])
+      );
       
-      // No one can delete shipments for now
-      allow delete: if false;
-
-      // Rules for bids subcollection
       match /bids/{bidId} {
-        // Exporter who owns the shipment can read bids
-        allow read: if request.auth != null && get(/databases/$(database)/documents/shipments/$(shipmentId)).data.exporterId == request.auth.uid;
-
-        // Carrier can create a bid for themselves
-        allow create: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userType == 'carrier' && request.resource.data.carrierId == request.auth.uid;
-        
-        // Carrier can read bids
-        allow read: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userType == 'carrier';
-
-        // No one can update/delete bids for now
-        allow update, delete: if false;
+        allow read: if isOwner() || isCarrier();
+        allow create: if isCarrier() && request.auth.uid == request.resource.data.carrierId;
       }
     }
   }

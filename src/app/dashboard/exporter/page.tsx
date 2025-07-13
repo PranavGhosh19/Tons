@@ -58,6 +58,7 @@ function ExporterDashboardPage() {
   // Form state
   const [productName, setProductName] = useState("");
   const [hsnCode, setHsnCode] = useState("");
+  const [modeOfShipment, setModeOfShipment] = useState("");
   const [cargoType, setCargoType] = useState("");
   const [weight, setWeight] = useState("");
   const [dimensionL, setDimensionL] = useState("");
@@ -141,6 +142,7 @@ function ExporterDashboardPage() {
 
                     setProductName(data.productName || "");
                     setHsnCode(data.hsnCode || "");
+                    setModeOfShipment(data.modeOfShipment || "");
                     setCargoType(data.cargo?.type || "");
                     setWeight(data.cargo?.weight || "");
                     setDimensionL(data.cargo?.dimensions?.length || "");
@@ -183,6 +185,7 @@ function ExporterDashboardPage() {
   const resetForm = () => {
     setProductName("");
     setHsnCode("");
+    setModeOfShipment("");
     setCargoType("");
     setWeight("");
     setDimensionL("");
@@ -224,6 +227,7 @@ function ExporterDashboardPage() {
     const shipmentPayload = {
       productName,
       hsnCode,
+      modeOfShipment,
       cargo: {
         type: cargoType,
         weight,
@@ -338,7 +342,21 @@ function ExporterDashboardPage() {
                     <Label htmlFor="hsn-code">HSN Code</Label>
                     <Input id="hsn-code" placeholder="e.g., 85171290" value={hsnCode} onChange={e => setHsnCode(e.target.value)} disabled={isSubmitting} />
                   </div>
-                  <div className="grid gap-2 md:col-span-2">
+                  <div className="grid gap-2">
+                    <Label htmlFor="mode-of-shipment">Mode of Shipment</Label>
+                    <Select value={modeOfShipment} onValueChange={setModeOfShipment} disabled={isSubmitting}>
+                      <SelectTrigger id="mode-of-shipment">
+                        <SelectValue placeholder="Select a mode" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Air">Air</SelectItem>
+                        <SelectItem value="Full Container Load">Full Container Load</SelectItem>
+                        <SelectItem value="Less than Container Load">Less than Container Load</SelectItem>
+                        <SelectItem value="Break Bulk">Break Bulk</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid gap-2">
                     <Label htmlFor="cargo-type">Cargo Type</Label>
                     <Select value={cargoType} onValueChange={setCargoType} disabled={isSubmitting}>
                       <SelectTrigger id="cargo-type">
@@ -346,15 +364,11 @@ function ExporterDashboardPage() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="General Cargo">General Cargo</SelectItem>
-                        <SelectItem value="Air">Air</SelectItem>
-                        <SelectItem value="Container (FCL)">Container (FCL)</SelectItem>
-                        <SelectItem value="Container (LCL)">Container (LCL)</SelectItem>
                         <SelectItem value="Bulk (Dry)">Bulk (Dry)</SelectItem>
                         <SelectItem value="Bulk (Liquid)">Bulk (Liquid)</SelectItem>
                         <SelectItem value="Reefer / Temperature-Controlled">Reefer / Temperature-Controlled</SelectItem>
                         <SelectItem value="HAZMAT / Dangerous">HAZMAT / Dangerous</SelectItem>
                         <SelectItem value="Roll-on/Roll-off (RoRo)">Roll-on/Roll-off (RoRo)</SelectItem>
-                        <SelectItem value="Break Bulk">Break Bulk</SelectItem>
                         <SelectItem value="Oversized / Out-of-Gauge">Oversized / Out-of-Gauge</SelectItem>
                         <SelectItem value="Project Cargo">Project Cargo</SelectItem>
                         <SelectItem value="Perishable Goods">Perishable Goods</SelectItem>
@@ -532,3 +546,5 @@ function ExporterDashboardPage() {
     </div>
   );
 }
+
+    
