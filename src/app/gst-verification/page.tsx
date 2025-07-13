@@ -86,14 +86,14 @@ export default function GstVerificationPage() {
 
   if (loading) {
     return (
-        <div className="flex flex-col items-center justify-center min-h-screen bg-secondary p-4">
+        <div className="flex flex-col items-center justify-center min-h-screen bg-white p-4">
             <Skeleton className="h-[450px] w-full max-w-lg" />
         </div>
     );
   }
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-secondary p-4">
+    <div className="flex flex-col items-center justify-center min-h-screen bg-white p-4">
       <Card className="mx-auto w-full max-w-lg shadow-xl">
         <CardHeader className="text-center space-y-2">
           <CardTitle className="text-3xl font-bold font-headline">
