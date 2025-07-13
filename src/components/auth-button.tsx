@@ -79,7 +79,7 @@ export function NavLinks() {
   return (
     <nav className="hidden sm:flex items-center gap-4 text-sm font-medium">
       {links.map((link) => {
-        const isActive = pathname === link.href;
+        const isActive = pathname.startsWith(link.href);
         return (
           <Link
             key={link.href}
@@ -96,6 +96,68 @@ export function NavLinks() {
     </nav>
   );
 }
+
+export function MobileNavLinks() {
+    const [user, setUser] = useState<User | null>(null);
+    const [userType, setUserType] = useState<string | null>(null);
+    const [loading, setLoading] = useState(true);
+    const pathname = usePathname();
+  
+    useEffect(() => {
+      const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+        if (currentUser) {
+          setUser(currentUser);
+          const userDocRef = doc(db, 'users', currentUser.uid);
+          const userDoc = await getDoc(userDocRef);
+          if (userDoc.exists()) {
+            setUserType(userDoc.data()?.userType || null);
+          }
+        } else {
+          setUser(null);
+          setUserType(null);
+        }
+        setLoading(false);
+      });
+      return () => unsubscribe();
+    }, []);
+  
+    if (loading) {
+      return (
+          <div className="flex flex-col gap-4">
+              <Skeleton className="h-6 w-24" />
+              <Skeleton className="h-6 w-24" />
+              <Skeleton className="h-6 w-24" />
+              <Skeleton className="h-6 w-24" />
+          </div>
+      )
+    }
+  
+    if (!user) {
+      return null;
+    }
+  
+    const links = userType === 'carrier' ? carrierNavLinks : exporterNavLinks;
+  
+    return (
+        <nav className="flex flex-col items-start gap-4">
+        {links.map((link) => {
+            const isActive = pathname.startsWith(link.href);
+            return (
+            <Link
+                key={link.href}
+                href={link.href}
+                className={cn(
+                    "transition-colors hover:text-primary",
+                    isActive ? "text-primary font-semibold" : "text-muted-foreground"
+                )}
+            >
+                {link.label}
+            </Link>
+            );
+        })}
+        </nav>
+    );
+  }
 
 export function AuthButton() {
   const [user, setUser] = useState<User | null>(null);
