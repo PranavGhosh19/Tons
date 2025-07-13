@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { AuthButton, MobileNavLinks, NavLinks } from "@/components/auth-button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Menu } from "lucide-react";
+import { BottomBar } from "@/components/bottom-bar";
 
 export const metadata: Metadata = {
   title: "Shipping Battlefield",
@@ -124,9 +125,10 @@ export default function RootLayout({
       <body className="min-h-screen bg-background font-body antialiased">
         <div className="relative flex min-h-screen flex-col">
           <Header />
-          <div className="flex-1">{children}</div>
+          <div className="flex-1 pb-16 sm:pb-0">{children}</div>
           <Footer />
         </div>
+        <BottomBar />
         <Toaster />
       </body>
     </html>
