@@ -180,7 +180,8 @@ export default function ShipmentDetailPage() {
                         <CardDescription>Shipment Details</CardDescription>
                     </CardHeader>
                     <CardContent className="grid md:grid-cols-2 gap-4 text-sm">
-                        <div><span className="font-semibold text-muted-foreground">Origin Port: </span>{shipment.origin?.portOfLoading}</div>
+                        {shipment.hsnCode && <div><span className="font-semibold text-muted-foreground">HSN Code: </span>{shipment.hsnCode}</div>}
+                        <div className={cn(!shipment.hsnCode && "md:col-span-2")}><span className="font-semibold text-muted-foreground">Origin Port: </span>{shipment.origin?.portOfLoading}</div>
                         <div><span className="font-semibold text-muted-foreground">Destination Port: </span>{shipment.destination?.portOfDelivery}</div>
                         <div><span className="font-semibold text-muted-foreground">Departure Date: </span>{shipment.departureDate ? format(shipment.departureDate.toDate(), "PPP") : 'N/A'}</div>
                         <div><span className="font-semibold text-muted-foreground">Delivery Deadline: </span>{shipment.deliveryDeadline ? format(shipment.deliveryDeadline.toDate(), "PPP") : 'N/A'}</div>
@@ -257,4 +258,6 @@ export default function ShipmentDetailPage() {
     </div>
   );
 }
+    
+
     

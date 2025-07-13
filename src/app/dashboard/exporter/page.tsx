@@ -57,6 +57,7 @@ function ExporterDashboardPage() {
   
   // Form state
   const [productName, setProductName] = useState("");
+  const [hsnCode, setHsnCode] = useState("");
   const [cargoType, setCargoType] = useState("");
   const [weight, setWeight] = useState("");
   const [dimensionL, setDimensionL] = useState("");
@@ -139,6 +140,7 @@ function ExporterDashboardPage() {
                     }
 
                     setProductName(data.productName || "");
+                    setHsnCode(data.hsnCode || "");
                     setCargoType(data.cargo?.type || "");
                     setWeight(data.cargo?.weight || "");
                     setDimensionL(data.cargo?.dimensions?.length || "");
@@ -180,6 +182,7 @@ function ExporterDashboardPage() {
 
   const resetForm = () => {
     setProductName("");
+    setHsnCode("");
     setCargoType("");
     setWeight("");
     setDimensionL("");
@@ -216,6 +219,7 @@ function ExporterDashboardPage() {
     
     const shipmentPayload = {
       productName,
+      hsnCode,
       cargo: {
         type: cargoType,
         weight,
@@ -327,6 +331,10 @@ function ExporterDashboardPage() {
                     <Input id="product-name" placeholder="e.g., Electronics, Textiles" value={productName} onChange={e => setProductName(e.target.value)} disabled={isSubmitting} />
                   </div>
                   <div className="grid gap-2">
+                    <Label htmlFor="hsn-code">HSN Code</Label>
+                    <Input id="hsn-code" placeholder="e.g., 85171290" value={hsnCode} onChange={e => setHsnCode(e.target.value)} disabled={isSubmitting} />
+                  </div>
+                  <div className="grid gap-2 md:col-span-2">
                     <Label htmlFor="cargo-type">Cargo Type</Label>
                     <Select value={cargoType} onValueChange={setCargoType} disabled={isSubmitting}>
                       <SelectTrigger id="cargo-type">
@@ -356,7 +364,7 @@ function ExporterDashboardPage() {
                     </div>
                   </div>
                    <div className="grid gap-2 md:col-span-2">
-                    <Label>Dimensions</Label>
+                    <Label>Dimensions (L x W x H)</Label>
                     <div className="grid grid-cols-3 gap-2">
                         <Input placeholder="Length" value={dimensionL} onChange={e => setDimensionL(e.target.value)} disabled={isSubmitting} />
                         <Input placeholder="Width" value={dimensionW} onChange={e => setDimensionW(e.target.value)} disabled={isSubmitting} />
@@ -516,3 +524,5 @@ function ExporterDashboardPage() {
     </div>
   );
 }
+
+    

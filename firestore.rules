@@ -1,52 +1,39 @@
 
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Helper function to check if user is an exporter
-    function isExporter(userId) {
-      return get(/databases/$(database)/documents/users/$(userId)).data.userType == 'exporter';
-    }
-
-    // Helper function to check if user is a carrier
-    function isCarrier(userId) {
-      return get(/databases/$(database)/documents/users/$(userId)).data.userType == 'carrier';
-    }
-
-    // Users can only read and write their own data
     match /users/{userId} {
-      allow read, update: if request.auth.uid == userId;
-      allow create: if request.auth.uid == userId && request.resource.data.email == request.auth.token.email;
+      allow read, update: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null && request.auth.uid == userId;
     }
 
-    // Rules for the shipments collection
     match /shipments/{shipmentId} {
-      // Exporters can create shipments for themselves
-      allow create: if request.auth.uid != null && isExporter(request.auth.uid) && request.resource.data.exporterId == request.auth.uid;
+      // Exporters can create/read/update their own shipments
+      allow create: if request.auth != null && request.resource.data.exporterId == request.auth.uid;
+      allow read, update: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userType == 'exporter' && resource.data.exporterId == request.auth.uid;
+      
+      // Carriers can read any shipment
+      allow read: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userType == 'carrier';
+      
+      // No one can delete shipments for now
+      allow delete: if false;
 
-      // Exporters can read/update their own shipments. Carriers can read all shipments.
-      allow read: if request.auth.uid != null && (
-                    (isExporter(request.auth.uid) && resource.data.exporterId == request.auth.uid) ||
-                    isCarrier(request.auth.uid)
-                  );
-      allow update: if request.auth.uid != null && isExporter(request.auth.uid) && resource.data.exporterId == request.auth.uid;
-
-      // Rules for the bids subcollection
+      // Rules for bids subcollection
       match /bids/{bidId} {
-        // The shipment's exporter can read bids.
-        allow read: if request.auth.uid != null && (
-                      (isExporter(request.auth.uid) && get(/databases/$(database)/documents/shipments/$(shipmentId)).data.exporterId == request.auth.uid) ||
-                      isCarrier(request.auth.uid) // Carriers can see other bids
-                    );
-        // Carriers can create bids for themselves
-        allow create: if request.auth.uid != null && isCarrier(request.auth.uid) && request.resource.data.carrierId == request.auth.uid;
-      }
-    }
+        // Exporter who owns the shipment can read bids
+        allow read: if request.auth != null && get(/databases/$(database)/documents/shipments/$(shipmentId)).data.exporterId == request.auth.uid;
 
-    // Default deny all other access
-    match /{document=**} {
-      allow read, write: if false;
+        // Carrier can create a bid for themselves
+        allow create: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userType == 'carrier' && request.resource.data.carrierId == request.auth.uid;
+        
+        // Carrier can read bids
+        allow read: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userType == 'carrier';
+
+        // No one can update/delete bids for now
+        allow update, delete: if false;
+      }
     }
   }
 }
+
+    
