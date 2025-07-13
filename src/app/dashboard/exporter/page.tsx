@@ -44,6 +44,7 @@ const airCargoTypes = [
   { value: "General Cargo", label: "General Cargo" },
   { value: "Perishable Goods", label: "Perishable Goods" },
   { value: "Live Animals", label: "Live Animals" },
+  { value: "HAZMAT / Dangerous", label: "HAZMAT / Dangerous" },
 ];
 
 const otherCargoTypes = [
