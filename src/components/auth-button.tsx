@@ -61,14 +61,7 @@ export function NavLinks() {
   }, []);
 
   if (loading) {
-    return (
-        <nav className="hidden sm:flex items-center gap-4 text-sm font-medium">
-            <Skeleton className="h-6 w-20" />
-            <Skeleton className="h-6 w-20" />
-            <Skeleton className="h-6 w-20" />
-            <Skeleton className="h-6 w-20" />
-        </nav>
-    )
+    return null;
   }
 
   if (!user) {
@@ -269,9 +262,6 @@ export function MobileMenu() {
                         Main navigation menu for Shipping Battlefield.
                     </SheetDescription>
                 </SheetHeader>
-                <div className="flex flex-col gap-4 py-4">
-                    <MobileNavLinks />
-                </div>
                 <div className="absolute bottom-4 right-4 left-4">
                     <AuthButton />
                 </div>

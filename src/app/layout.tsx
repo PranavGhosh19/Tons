@@ -5,7 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { AuthButton, MobileMenu, MobileNavLinks, NavLinks } from "@/components/auth-button";
+import { AuthButton, MobileMenu, MobileNavLinks } from "@/components/auth-button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Menu } from "lucide-react";
 import { BottomBar } from "@/components/bottom-bar";
@@ -64,7 +64,7 @@ const Header = () => (
           <LogoIcon />
           <span className="hidden sm:block font-bold text-base sm:text-xl">Shipping Battlefield</span>
         </Link>
-        <NavLinks />
+        
       </div>
       
        <div className="ml-auto flex items-center gap-2">
