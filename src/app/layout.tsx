@@ -5,7 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { AuthButton, MobileMenu, MobileNavLinks } from "@/components/auth-button";
+import { AuthButton, MobileMenu, NavLinks } from "@/components/auth-button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Menu } from "lucide-react";
 import { BottomBar } from "@/components/bottom-bar";
@@ -64,7 +64,7 @@ const Header = () => (
           <LogoIcon />
           <span className="hidden sm:block font-bold text-base sm:text-xl">Shipping Battlefield</span>
         </Link>
-        
+        <NavLinks />
       </div>
       
        <div className="ml-auto flex items-center gap-2">
@@ -97,7 +97,7 @@ export default function RootLayout({
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+        <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=PT+Sans:wght@400;700&display=swap" rel="stylesheet" />
       </head>
       <body className="min-h-screen bg-background font-body antialiased">
         <div className="relative flex min-h-screen flex-col">

@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import { doc, getDoc } from "firebase/firestore";
 import { Skeleton } from "./ui/skeleton";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "./ui/sheet";
+import { Separator } from "./ui/separator";
 
 const exporterNavLinks = [
   { href: "/dashboard", label: "Dashboard" },
@@ -60,11 +61,7 @@ export function NavLinks() {
     return () => unsubscribe();
   }, []);
 
-  if (loading) {
-    return null;
-  }
-
-  if (!user) {
+  if (loading || !user) {
     return null;
   }
 
@@ -96,6 +93,19 @@ export function MobileNavLinks() {
     const [userType, setUserType] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const pathname = usePathname();
+    const router = useRouter();
+    const [open, setOpen] = useState(false);
+
+
+    const handleLogout = async () => {
+        try {
+          await signOut(auth);
+          setOpen(false);
+          router.push("/");
+        } catch (error) {
+          console.error("Error signing out: ", error);
+        }
+    };
   
     useEffect(() => {
       const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -114,6 +124,11 @@ export function MobileNavLinks() {
       });
       return () => unsubscribe();
     }, []);
+
+    const handleLinkClick = (href: string) => {
+        router.push(href);
+        setOpen(false);
+    }
   
     if (loading) {
       return (
@@ -127,29 +142,76 @@ export function MobileNavLinks() {
     }
   
     if (!user) {
-      return null;
+      return (
+        <div className="flex flex-col gap-2 w-full">
+            <Button variant="ghost" asChild className="w-full justify-start text-base" onClick={() => setOpen(false)}>
+                <Link href="/login">Log In</Link>
+            </Button>
+            <Button asChild className="w-full justify-start text-base" onClick={() => setOpen(false)}>
+                <Link href="/signup">Sign Up</Link>
+            </Button>
+        </div>
+      );
     }
   
     const links = userType === 'carrier' ? carrierNavLinks : exporterNavLinks;
   
     return (
-        <nav className="flex flex-col items-start gap-4">
-        {links.map((link) => {
-            const isActive = pathname.startsWith(link.href);
-            return (
-            <Link
-                key={link.href}
-                href={link.href}
-                className={cn(
-                    "transition-colors hover:text-primary",
-                    isActive ? "text-primary font-semibold" : "text-muted-foreground"
-                )}
-            >
-                {link.label}
-            </Link>
-            );
-        })}
-        </nav>
+        <Sheet open={open} onOpenChange={setOpen}>
+            <SheetTrigger asChild>
+                <Button variant="ghost" size="icon">
+                <Menu className="h-6 w-6" />
+                <span className="sr-only">Toggle Menu</span>
+                </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="pt-12 flex flex-col">
+                <SheetHeader className="text-left">
+                    <SheetTitle>Menu</SheetTitle>
+                    <SheetDescription className="sr-only">
+                        Main navigation menu for Shipping Battlefield.
+                    </SheetDescription>
+                </SheetHeader>
+                <div className="flex flex-col gap-3 py-4 text-lg font-medium">
+                    {links.map((link) => {
+                        const isActive = pathname.startsWith(link.href);
+                        return (
+                        <button
+                            key={link.href}
+                            onClick={() => handleLinkClick(link.href)}
+                            className={cn(
+                                "transition-colors hover:text-primary text-left",
+                                isActive ? "text-primary font-semibold" : "text-muted-foreground"
+                            )}
+                        >
+                            {link.label}
+                        </button>
+                        );
+                    })}
+                </div>
+
+                <div className="mt-auto flex flex-col gap-3 text-lg font-medium">
+                    <Separator />
+                    <button
+                        onClick={() => handleLinkClick('/settings')}
+                        className="transition-colors hover:text-primary text-left text-muted-foreground flex items-center"
+                    >
+                         <Settings className="mr-2 h-5 w-5" /> Settings
+                    </button>
+                     <button
+                        onClick={() => handleLinkClick('/support')}
+                        className="transition-colors hover:text-primary text-left text-muted-foreground flex items-center"
+                    >
+                         <LifeBuoy className="mr-2 h-5 w-5" /> Support
+                    </button>
+                     <button
+                        onClick={handleLogout}
+                        className="transition-colors hover:text-primary text-left text-muted-foreground flex items-center"
+                    >
+                         <LogOut className="mr-2 h-5 w-5" /> Logout
+                    </button>
+                </div>
+            </SheetContent>
+        </Sheet>
     );
   }
 
@@ -241,32 +303,10 @@ export function MobileMenu() {
     if (loading) {
         return <Skeleton className="h-10 w-10 sm:hidden" />;
     }
-
-    if (!user) {
-        return null;
-    }
     
     return (
         <div className="sm:hidden">
-            <Sheet>
-            <SheetTrigger asChild>
-                <Button variant="ghost" size="icon">
-                <Menu className="h-6 w-6" />
-                <span className="sr-only">Toggle Menu</span>
-                </Button>
-            </SheetTrigger>
-            <SheetContent side="right" className="pt-16">
-                <SheetHeader className="text-left">
-                    <SheetTitle>Menu</SheetTitle>
-                    <SheetDescription className="sr-only">
-                        Main navigation menu for Shipping Battlefield.
-                    </SheetDescription>
-                </SheetHeader>
-                <div className="absolute bottom-4 right-4 left-4">
-                    <AuthButton />
-                </div>
-            </SheetContent>
-            </Sheet>
+            <MobileNavLinks />
         </div>
     );
 }
