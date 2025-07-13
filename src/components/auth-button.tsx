@@ -16,10 +16,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { User as UserIcon, LogOut, Settings, LifeBuoy } from "lucide-react";
+import { User as UserIcon, LogOut, Settings, LifeBuoy, Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { doc, getDoc } from "firebase/firestore";
 import { Skeleton } from "./ui/skeleton";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "./ui/sheet";
 
 const exporterNavLinks = [
   { href: "/dashboard", label: "Dashboard" },
@@ -230,4 +231,52 @@ export function AuthButton() {
       </Button>
     </div>
   );
+}
+
+export function MobileMenu() {
+    const [user, setUser] = useState<User | null>(null);
+    const [loading, setLoading] = useState(true);
+  
+    useEffect(() => {
+      const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+        setUser(currentUser);
+        setLoading(false);
+      });
+      return () => unsubscribe();
+    }, []);
+
+    if (loading) {
+        return <Skeleton className="h-10 w-10 sm:hidden" />;
+    }
+
+    if (!user) {
+        return null;
+    }
+    
+    return (
+        <div className="sm:hidden">
+            <Sheet>
+            <SheetTrigger asChild>
+                <Button variant="ghost" size="icon">
+                <Menu className="h-6 w-6" />
+                <span className="sr-only">Toggle Menu</span>
+                </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="pt-16">
+                <SheetHeader className="text-left">
+                    <SheetTitle>Menu</SheetTitle>
+                    <SheetDescription className="sr-only">
+                        Main navigation menu for Shipping Battlefield.
+                    </SheetDescription>
+                </SheetHeader>
+                <div className="flex flex-col gap-4 py-4">
+                    <MobileNavLinks />
+                </div>
+                <div className="absolute bottom-4 right-4 left-4">
+                    <AuthButton />
+                </div>
+            </SheetContent>
+            </Sheet>
+        </div>
+    );
 }

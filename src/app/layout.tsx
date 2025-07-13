@@ -5,7 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { AuthButton, MobileNavLinks, NavLinks } from "@/components/auth-button";
+import { AuthButton, MobileMenu, MobileNavLinks, NavLinks } from "@/components/auth-button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Menu } from "lucide-react";
 import { BottomBar } from "@/components/bottom-bar";
@@ -71,30 +71,7 @@ const Header = () => (
          <div className="hidden sm:flex">
             <AuthButton />
          </div>
-        <div className="sm:hidden">
-            <Sheet>
-            <SheetTrigger asChild>
-                <Button variant="ghost" size="icon">
-                <Menu className="h-6 w-6" />
-                <span className="sr-only">Toggle Menu</span>
-                </Button>
-            </SheetTrigger>
-            <SheetContent side="right" className="pt-16">
-                <SheetHeader className="text-left">
-                    <SheetTitle>Menu</SheetTitle>
-                    <SheetDescription className="sr-only">
-                        Main navigation menu for Shipping Battlefield.
-                    </SheetDescription>
-                </SheetHeader>
-                <div className="flex flex-col gap-4 py-4">
-                    <MobileNavLinks />
-                </div>
-                <div className="absolute bottom-4 right-4 left-4">
-                    <AuthButton />
-                </div>
-            </SheetContent>
-            </Sheet>
-        </div>
+         <MobileMenu />
       </div>
     </div>
   </header>
