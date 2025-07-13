@@ -342,7 +342,9 @@ function ExporterDashboardPage() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="General Cargo">General Cargo</SelectItem>
-                        <SelectItem value="Container (FCL/LCL)">Container (FCL/LCL)</SelectItem>
+                        <SelectItem value="Air">Air</SelectItem>
+                        <SelectItem value="Container (FCL)">Container (FCL)</SelectItem>
+                        <SelectItem value="Container (LCL)">Container (LCL)</SelectItem>
                         <SelectItem value="Bulk (Dry)">Bulk (Dry)</SelectItem>
                         <SelectItem value="Bulk (Liquid)">Bulk (Liquid)</SelectItem>
                         <SelectItem value="Reefer / Temperature-Controlled">Reefer / Temperature-Controlled</SelectItem>
