@@ -121,6 +121,7 @@ export default function CarrierDashboardPage() {
       case 'awarded':
         return 'success';
       case 'draft':
+      case 'scheduled':
         return 'secondary';
       default:
         return 'outline';
@@ -252,6 +253,7 @@ export default function CarrierDashboardPage() {
                               <p className="text-muted-foreground">
                                 {
                                   selectedShipment.status === 'draft' ? 'This shipment is not yet accepting bids.' :
+                                  selectedShipment.status === 'scheduled' && selectedShipment.goLiveDate ? `Bidding for this shipment will begin on ${format(selectedShipment.goLiveDate.toDate(), "Pp")}.` :
                                   selectedShipment.status === 'awarded' ?
                                       (selectedShipment.winningCarrierId === user?.uid ?
                                           'Congratulations! You won this bid.' :
@@ -279,5 +281,3 @@ export default function CarrierDashboardPage() {
     </div>
   );
 }
-
-    
