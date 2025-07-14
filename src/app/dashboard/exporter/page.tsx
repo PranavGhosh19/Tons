@@ -110,6 +110,12 @@ function ExporterDashboardPage() {
     return otherCargoTypes;
   }, [modeOfShipment]);
 
+  const showDimensions = useMemo(() => {
+    if (modeOfShipment !== 'Air') return false;
+    const validCargoTypes = ['General Cargo', 'HAZMAT / Dangerous', 'Perishable Goods'];
+    return validCargoTypes.includes(cargoType);
+  }, [modeOfShipment, cargoType]);
+
   useEffect(() => {
     // Reset cargo type if it's not in the current options
     if (cargoType && !cargoTypeOptions.find(opt => opt.value === cargoType)) {
@@ -374,13 +380,6 @@ function ExporterDashboardPage() {
         return 'outline';
     }
   }
-
-  const showDimensions = useMemo(() => {
-    if (modeOfShipment !== 'Air') return false;
-    const validCargoTypes = ['General Cargo', 'HAZMAT / Dangerous', 'Perishable Goods'];
-    return validCargoTypes.includes(cargoType);
-  }, [modeOfShipment, cargoType]);
-
 
   return (
     <div className="container py-6 md:py-10">
