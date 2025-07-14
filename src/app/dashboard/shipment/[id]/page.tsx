@@ -147,6 +147,10 @@ export default function ShipmentDetailPage() {
     switch(shipment.status) {
         case 'draft':
             return { text: "Draft", description: "This shipment is not yet live." };
+        case 'scheduled':
+            const goLiveDate = shipment.goLiveDate?.toDate();
+            const formattedDate = goLiveDate ? format(goLiveDate, "Pp") : 'a future date';
+            return { text: "Scheduled", description: `Bidding will go live on ${formattedDate}.` };
         case 'live':
             return { text: "Accepting Bids", description: "This shipment is live for carriers to bid on." };
         case 'awarded':
@@ -165,7 +169,7 @@ export default function ShipmentDetailPage() {
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Back to Dashboard
             </Button>
-            {shipment.status === 'draft' && (
+            {(shipment.status === 'draft' || shipment.status === 'scheduled') && (
                 <Button variant="outline" onClick={() => router.push(`/dashboard/exporter?edit=${shipmentId}`)}>
                     <Pencil className="mr-2 h-4 w-4" />
                     Edit Shipment
@@ -208,7 +212,7 @@ export default function ShipmentDetailPage() {
                     </CardContent>
                 </Card>
 
-                 {shipment.status !== 'draft' && (
+                 {shipment.status !== 'draft' && shipment.status !== 'scheduled' && (
                     <Card className="bg-white dark:bg-card">
                         <CardHeader>
                             <CardTitle>Bids Received</CardTitle>
@@ -275,3 +279,5 @@ export default function ShipmentDetailPage() {
     </div>
   );
 }
+
+    
