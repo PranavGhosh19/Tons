@@ -132,7 +132,7 @@ export default function SettingsPage() {
             <h1 className="text-2xl sm:text-3xl font-bold font-headline mb-8">Settings</h1>
 
             <div className="grid gap-8">
-                <Card>
+                <Card className="bg-white dark:bg-card">
                     <CardHeader>
                         <CardTitle>Profile Information</CardTitle>
                         <CardDescription>Manage your personal and company details.</CardDescription>
@@ -170,7 +170,7 @@ export default function SettingsPage() {
                     </CardContent>
                 </Card>
 
-                <Card>
+                <Card className="bg-white dark:bg-card">
                     <CardHeader>
                         <CardTitle>Account Security</CardTitle>
                         <CardDescription>Change your password to keep your account secure.</CardDescription>
@@ -196,7 +196,7 @@ export default function SettingsPage() {
                     </CardContent>
                 </Card>
 
-                <Card>
+                <Card className="bg-white dark:bg-card">
                     <CardHeader>
                         <CardTitle>User Preferences</CardTitle>
                         <CardDescription>Customize your experience on the platform.</CardDescription>
@@ -215,4 +215,3 @@ export default function SettingsPage() {
         </div>
     );
 }
-
