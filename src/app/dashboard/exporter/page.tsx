@@ -449,7 +449,7 @@ function ExporterDashboardPage() {
                         <span className="bg-muted text-muted-foreground px-3 py-2 border border-l-0 rounded-r-md">kg</span>
                     </div>
                   </div>
-                   {cargoType !== 'General Cargo' && cargoType !== '' && (
+                   {(modeOfShipment === 'Air' || (cargoType !== 'General Cargo' && cargoType !== '')) && (
                     <div className="grid gap-2 md:col-span-2">
                       <Label>Dimensions (L x W x H)</Label>
                       <div className="grid grid-cols-3 gap-2">
