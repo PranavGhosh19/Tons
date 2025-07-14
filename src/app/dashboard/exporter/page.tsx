@@ -47,6 +47,11 @@ const airCargoTypes = [
   { value: "HAZMAT / Dangerous", label: "HAZMAT / Dangerous" },
 ];
 
+const lclCargoTypes = [
+  { value: "General Cargo", label: "General Cargo" },
+  { value: "HAZMAT / Dangerous", label: "HAZMAT / Dangerous" },
+];
+
 const otherCargoTypes = [
   { value: "General Cargo", label: "General Cargo" },
   { value: "Bulk (Dry)", label: "Bulk (Dry)" },
@@ -123,6 +128,9 @@ function ExporterDashboardPage() {
   const cargoTypeOptions = useMemo(() => {
     if (modeOfShipment === 'Air') {
         return airCargoTypes;
+    }
+    if (modeOfShipment === 'Less than Container Load') {
+        return lclCargoTypes;
     }
     return otherCargoTypes;
   }, [modeOfShipment]);
@@ -691,5 +699,3 @@ function ExporterDashboardPage() {
     </div>
   );
 }
-
-    
