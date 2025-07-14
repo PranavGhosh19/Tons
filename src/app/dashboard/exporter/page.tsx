@@ -196,6 +196,12 @@ function ExporterDashboardPage() {
                     setDestinationZip(data.destination?.zipCode || "");
                     setSpecialInstructions(data.specialInstructions || "");
                     
+                    if (data.goLiveDate) {
+                        const goLive = data.goLiveDate.toDate();
+                        setGoLiveDate(goLive);
+                        setGoLiveTime(format(goLive, "HH:mm"));
+                    }
+                    
                     setEditingShipmentId(editId);
                     setOpen(true);
                 } else {
@@ -267,7 +273,15 @@ function ExporterDashboardPage() {
     }
     setIsSubmitting(true);
     
-    const shipmentPayload = {
+    let goLiveTimestamp = null;
+    if (goLiveDate) {
+        const [hours, minutes] = goLiveTime.split(':').map(Number);
+        const finalGoLiveDate = new Date(goLiveDate);
+        finalGoLiveDate.setHours(hours, minutes, 0, 0);
+        goLiveTimestamp = Timestamp.fromDate(finalGoLiveDate);
+    }
+    
+    const shipmentPayload: any = {
       shipmentType,
       productName,
       hsnCode,
@@ -292,6 +306,8 @@ function ExporterDashboardPage() {
           zipCode: destinationZip,
       },
       specialInstructions,
+      goLiveDate: goLiveTimestamp,
+      status: goLiveTimestamp ? 'scheduled' : 'draft',
     };
     
     try {
@@ -308,10 +324,9 @@ function ExporterDashboardPage() {
           ...shipmentPayload,
           exporterId: user.uid,
           exporterName: exporterName,
-          status: 'draft',
           createdAt: Timestamp.now(),
         });
-        toast({ title: "Success", description: "Shipment request created as a draft." });
+        toast({ title: "Success", description: `Shipment request saved as ${shipmentPayload.status}.` });
       }
       resetForm();
       setOpen(false);
@@ -353,6 +368,7 @@ function ExporterDashboardPage() {
       case 'awarded':
         return 'success';
       case 'draft':
+      case 'scheduled':
         return 'secondary';
       default:
         return 'outline';
