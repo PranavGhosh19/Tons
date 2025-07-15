@@ -688,7 +688,7 @@ function ExporterDashboardPage() {
                     ) : (
                       <Badge variant={getStatusVariant(product.status)} className={cn("capitalize", { "animate-blink bg-green-500/80": product.status === 'live' })}>
                         {product.status === 'scheduled' && product.goLiveDate ? 
-                          `Scheduled: ${format(product.goLiveDate.toDate(), 'P')}` :
+                          `Scheduled: ${format(product.goLiveDate.toDate(), 'Pp')}` :
                           product.status
                         }
                       </Badge>
