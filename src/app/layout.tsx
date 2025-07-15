@@ -9,6 +9,7 @@ import { AuthButton, MobileMenu, NavLinks } from "@/components/auth-button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Menu } from "lucide-react";
 import { BottomBar } from "@/components/bottom-bar";
+import { Clock } from "@/components/clock";
 
 export const metadata: Metadata = {
   title: "Shipping Battlefield",
@@ -79,10 +80,11 @@ const Header = () => (
 
 const Footer = () => (
   <footer className="py-6 md:px-8 md:py-0 border-t">
-    <div className="container flex flex-col items-center justify-center gap-4 md:h-24 md:flex-row">
-      <p className="text-center text-sm leading-loose text-muted-foreground">
+    <div className="container flex flex-col items-center justify-between gap-4 md:h-24 md:flex-row">
+      <p className="text-center text-sm leading-loose text-muted-foreground md:text-left">
         &copy; {new Date().getFullYear()} Shipping Battlefield. All rights reserved.
       </p>
+      <Clock />
     </div>
   </footer>
 );
