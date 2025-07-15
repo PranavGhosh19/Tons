@@ -526,7 +526,13 @@ function ExporterDashboardPage() {
                             </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0">
-                            <Calendar mode="single" selected={departureDate} onSelect={setDepartureDate} initialFocus />
+                            <Calendar
+                                mode="single"
+                                selected={departureDate}
+                                onSelect={setDepartureDate}
+                                disabled={{ before: new Date() }}
+                                initialFocus
+                            />
                         </PopoverContent>
                         </Popover>
                     </div>
@@ -548,7 +554,7 @@ function ExporterDashboardPage() {
                                 mode="single"
                                 selected={deliveryDeadline}
                                 onSelect={setDeliveryDeadline}
-                                disabled={departureDate ? { before: departureDate } : undefined}
+                                disabled={departureDate ? { before: departureDate } : { before: new Date() }}
                                 initialFocus
                             />
                         </PopoverContent>
