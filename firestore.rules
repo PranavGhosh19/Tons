@@ -22,49 +22,48 @@ service cloud.firestore {
     // Rules for the shipments collection
     match /shipments/{shipmentId} {
       // Exporters can create shipments for themselves
-      allow create: if request.auth.uid != null 
-                    && isExporter(request.auth.uid) 
-                    && request.resource.data.exporterId == request.auth.uid;
+      allow create: if request.auth.uid != null
+                    && isExporter(request.auth.uid)
+                    && request.resource.data.exporterId == request.auth.uid
+                    && request.resource.data.status == 'draft'
+                    && request.resource.data.productName is string
+                    && request.resource.data.createdAt == request.time;
+
 
       // Exporters can read their own shipments. Carriers can read all shipments.
       allow read: if request.auth.uid != null && (
                     (isExporter(request.auth.uid) && resource.data.exporterId == request.auth.uid) ||
                     isCarrier(request.auth.uid)
                   );
-                  
-      // Exporters can update their own shipments under specific conditions
-      allow update: if request.auth.uid != null 
-                    && isExporter(request.auth.uid) 
+
+      // Exporters can update their shipments under specific conditions
+      allow update: if request.auth.uid != null
+                    && isExporter(request.auth.uid)
                     && resource.data.exporterId == request.auth.uid
+                    && request.resource.data.exporterId == resource.data.exporterId // Cannot change exporterId
+                    && request.resource.data.createdAt == resource.data.createdAt // Cannot change createdAt
                     && (
-                      // Allow general updates only when shipment is a draft or scheduled
-                      (resource.data.status == 'draft' || resource.data.status == 'scheduled')
-                      // Prevent changing the exporter or creation date
-                      && request.resource.data.exporterId == resource.data.exporterId
-                      && request.resource.data.createdAt == resource.data.createdAt
-                    ) || (
-                      // Allow changing status from draft/scheduled to live
-                      (resource.data.status == 'draft' || resource.data.status == 'scheduled')
-                      && request.resource.data.status == 'live'
-                    ) || (
-                      // Allow accepting a bid (awarding) when status is live
-                      resource.data.status == 'live' 
-                      && request.resource.data.status == 'awarded'
-                      && request.resource.data.winningBidId != null
+                      // Condition 1: Editing a draft shipment
+                      (resource.data.status == 'draft' && request.resource.data.status == 'draft') ||
+                      // Condition 2: Going live from draft
+                      (resource.data.status == 'draft' && request.resource.data.status == 'live') ||
+                      // Condition 3: Awarding a bid on a live shipment
+                      (resource.data.status == 'live' && request.resource.data.status == 'awarded' && request.resource.data.winningBidId is string)
                     );
 
       // Rules for the bids subcollection
       match /bids/{bidId} {
-        // Exporters and Carriers can read bids.
+        // The shipment's exporter can read bids. Carriers can read all bids on a shipment.
         allow read: if request.auth.uid != null && (
-                      (isExporter(request.auth.uid) && get(/databases/$(database)/documents/shipments/$(shipmentId)).data.exporterId == request.auth.uid) ||
+                      isExporter(request.auth.uid) && get(/databases/$(database)/documents/shipments/$(shipmentId)).data.exporterId == request.auth.uid ||
                       isCarrier(request.auth.uid)
                     );
-        // Carriers can create bids for themselves, but only on 'live' shipments.
-        allow create: if request.auth.uid != null 
-                      && isCarrier(request.auth.uid) 
+
+        // Carriers can create bids on live shipments for themselves
+        allow create: if request.auth.uid != null
+                      && isCarrier(request.auth.uid)
                       && request.resource.data.carrierId == request.auth.uid
-                      && get(/databases/$(database)/documents/shipments/$(shipmentId)).data.status == 'live';
+                      && get(/databases/$(database)/documents/shipments/$(shipmentId)).data.status == 'live'; // Can only bid on live shipments
       }
     }
   }
