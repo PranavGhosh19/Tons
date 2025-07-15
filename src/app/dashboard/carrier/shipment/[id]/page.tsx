@@ -186,8 +186,8 @@ export default function CarrierShipmentDetailPage() {
                          {shipment.destination?.zipCode && <div><span className="font-semibold text-muted-foreground block mb-1">Destination Zip</span>{shipment.destination.zipCode}</div>}
                     </div>
                     <div className="grid md:grid-cols-2 gap-4 border-b pb-6">
-                         <div><span className="font-semibold text-muted-foreground block mb-1">Departure Date</span>{shipment.departureDate ? format(shipment.departureDate.toDate(), "PPP") : 'N/A'}</div>
-                         <div><span className="font-semibold text-muted-foreground block mb-1">Delivery Deadline</span>{shipment.deliveryDeadline ? format(shipment.deliveryDeadline.toDate(), "PPP") : 'N/A'}</div>
+                         <div><span className="font-semibold text-muted-foreground block mb-1">Departure Date</span>{shipment.departureDate ? format(shipment.departureDate.toDate(), "dd/MM/yyyy") : 'N/A'}</div>
+                         <div><span className="font-semibold text-muted-foreground block mb-1">Delivery Deadline</span>{shipment.deliveryDeadline ? format(shipment.deliveryDeadline.toDate(), "dd/MM/yyyy") : 'N/A'}</div>
                     </div>
                     <div className="space-y-4">
                         <p className="font-semibold text-foreground">Cargo Information</p>
@@ -248,5 +248,7 @@ export default function CarrierShipmentDetailPage() {
     </div>
   );
 }
+
+    
 
     

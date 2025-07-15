@@ -20,12 +20,14 @@ export function Clock() {
 
   const formatTime = (date: Date | null) => {
     if (!date) {
-      return '00:00:00';
+      return '00:00:00 AM';
     }
-    const hours = String(date.getHours()).padStart(2, '0');
-    const minutes = String(date.getMinutes()).padStart(2, '0');
-    const seconds = String(date.getSeconds()).padStart(2, '0');
-    return `${hours}:${minutes}:${seconds}`;
+    return date.toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true,
+    });
   };
 
   return (
@@ -34,3 +36,5 @@ export function Clock() {
     </div>
   );
 }
+
+    

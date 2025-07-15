@@ -173,7 +173,7 @@ export default function CarrierDashboardPage() {
                 } else if (shipment.status === 'scheduled' && shipment.goLiveDate) {
                   statusBadge = (
                     <Badge variant={getStatusVariant(shipment.status)} className="capitalize">
-                      Scheduled: {format(shipment.goLiveDate.toDate(), 'Pp')}
+                      Scheduled: {format(shipment.goLiveDate.toDate(), 'dd/MM/yyyy HH:mm')}
                     </Badge>
                   );
                 } else {
@@ -190,7 +190,7 @@ export default function CarrierDashboardPage() {
                     <TableCell className="hidden sm:table-cell">{shipment.exporterName || 'N/A'}</TableCell>
                     <TableCell className="hidden md:table-cell">{shipment.origin?.portOfLoading || 'N/A'}</TableCell>
                     <TableCell className="hidden md:table-cell">{shipment.destination?.portOfDelivery || 'N/A'}</TableCell>
-                    <TableCell className="hidden lg:table-cell text-right">{shipment.deliveryDeadline ? format(shipment.deliveryDeadline.toDate(), "PPP") : 'N/A'}</TableCell>
+                    <TableCell className="hidden lg:table-cell text-right">{shipment.deliveryDeadline ? format(shipment.deliveryDeadline.toDate(), "dd/MM/yyyy") : 'N/A'}</TableCell>
                     <TableCell className="text-center">
                         {statusBadge}
                     </TableCell>
@@ -230,8 +230,8 @@ export default function CarrierDashboardPage() {
                               {selectedShipment.origin?.zipCode && <div><span className="font-semibold">Origin Zip: </span>{selectedShipment.origin?.zipCode}</div>}
                               {selectedShipment.destination?.zipCode && <div><span className="font-semibold">Destination Zip: </span>{selectedShipment.destination?.zipCode}</div>}
 
-                              <div><span className="font-semibold">Departure: </span>{selectedShipment.departureDate ? format(selectedShipment.departureDate.toDate(), "PPP") : 'N/A'}</div>
-                              <div><span className="font-semibold">Deadline: </span>{selectedShipment.deliveryDeadline ? format(selectedShipment.deliveryDeadline.toDate(), "PPP") : 'N/A'}</div>
+                              <div><span className="font-semibold">Departure: </span>{selectedShipment.departureDate ? format(selectedShipment.departureDate.toDate(), "dd/MM/yyyy") : 'N/A'}</div>
+                              <div><span className="font-semibold">Deadline: </span>{selectedShipment.deliveryDeadline ? format(selectedShipment.deliveryDeadline.toDate(), "dd/MM/yyyy") : 'N/A'}</div>
                               <div className="md:col-span-2"><span className="font-semibold">Cargo: </span>{selectedShipment.cargo?.type || 'General'} - {selectedShipment.cargo?.weight}kg</div>
                               {selectedShipment.cargo?.packageType && <div className="md:col-span-2"><span className="font-semibold">Package: </span>{selectedShipment.cargo.packageType}</div>}
                               {hasDimensions && <div className="md:col-span-2"><span className="font-semibold">Dimensions (LxWxH): </span>{selectedShipment.cargo.dimensions.length} x {selectedShipment.cargo.dimensions.width} x {selectedShipment.cargo.dimensions.height} {selectedShipment.cargo.dimensions.unit || ''}</div>}
@@ -262,7 +262,7 @@ export default function CarrierDashboardPage() {
                               <p className="text-muted-foreground">
                                 {
                                   selectedShipment.status === 'draft' ? 'This shipment is not yet accepting bids.' :
-                                  selectedShipment.status === 'scheduled' && selectedShipment.goLiveDate ? `Bidding for this shipment will begin on ${format(selectedShipment.goLiveDate.toDate(), "Pp")}.` :
+                                  selectedShipment.status === 'scheduled' && selectedShipment.goLiveDate ? `Bidding for this shipment will begin on ${format(selectedShipment.goLiveDate.toDate(), "dd/MM/yyyy HH:mm")}.` :
                                   selectedShipment.status === 'awarded' ?
                                       (selectedShipment.winningCarrierId === user?.uid ?
                                           'Congratulations! You won this bid.' :
@@ -290,3 +290,5 @@ export default function CarrierDashboardPage() {
     </div>
   );
 }
+
+    
