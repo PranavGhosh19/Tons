@@ -7,6 +7,7 @@ import { doc, getDoc, updateDoc, DocumentData } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
+import { useTheme } from "next-themes";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,9 +15,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
-import { Switch } from "@/components/ui/switch";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Terminal } from "lucide-react";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Moon, Sun, Monitor } from "lucide-react";
 
 
 const PageSkeleton = () => (
@@ -37,6 +37,7 @@ export default function SettingsPage() {
     const [loading, setLoading] = useState(true);
     const router = useRouter();
     const { toast } = useToast();
+    const { theme, setTheme } = useTheme();
 
     // Form States
     const [name, setName] = useState("");
@@ -202,18 +203,51 @@ export default function SettingsPage() {
                         <CardDescription>Customize your experience on the platform.</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-6">
-                        <Alert>
-                            <Terminal className="h-4 w-4" />
-                            <AlertTitle>More Coming Soon!</AlertTitle>
-                            <AlertDescription>
-                                We're working on adding more customization options, including theme selection and granular notification controls.
-                            </AlertDescription>
-                        </Alert>
+                       <div className="space-y-2">
+                            <Label>Theme</Label>
+                            <p className="text-sm text-muted-foreground">
+                                Select the theme for the dashboard.
+                            </p>
+                        </div>
+                        <RadioGroup
+                            value={theme}
+                            onValueChange={setTheme}
+                            className="grid grid-cols-3 gap-4"
+                        >
+                            <div>
+                                <RadioGroupItem value="light" id="light" className="peer sr-only" />
+                                <Label
+                                htmlFor="light"
+                                className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
+                                >
+                                <Sun className="h-6 w-6" />
+                                Light
+                                </Label>
+                            </div>
+                            <div>
+                                <RadioGroupItem value="dark" id="dark" className="peer sr-only" />
+                                <Label
+                                htmlFor="dark"
+                                className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
+                                >
+                                <Moon className="h-6 w-6" />
+                                Dark
+                                </Label>
+                            </div>
+                            <div>
+                                <RadioGroupItem value="system" id="system" className="peer sr-only" />
+                                <Label
+                                htmlFor="system"
+                                className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
+                                >
+                                <Monitor className="h-6 w-6" />
+                                System
+                                </Label>
+                            </div>
+                        </RadioGroup>
                     </CardContent>
                 </Card>
             </div>
         </div>
     );
 }
-
-    
