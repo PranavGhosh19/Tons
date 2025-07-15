@@ -170,6 +170,12 @@ export default function CarrierDashboardPage() {
                     } else {
                         statusBadge = <Badge variant="outline">Closed</Badge>;
                     }
+                } else if (shipment.status === 'scheduled' && shipment.goLiveDate) {
+                  statusBadge = (
+                    <Badge variant={getStatusVariant(shipment.status)} className="capitalize">
+                      Scheduled: {format(shipment.goLiveDate.toDate(), 'Pp')}
+                    </Badge>
+                  );
                 } else {
                     statusBadge = (
                         <Badge variant={getStatusVariant(shipment.status)} className={cn("capitalize", { "animate-blink bg-green-500/80": shipment.status === 'live' })}>
@@ -284,5 +290,3 @@ export default function CarrierDashboardPage() {
     </div>
   );
 }
-
-    
