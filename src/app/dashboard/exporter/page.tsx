@@ -110,8 +110,6 @@ function ExporterDashboardPage() {
   const [dimensionUnit, setDimensionUnit] = useState("CMS");
   const [departureDate, setDepartureDate] = useState<Date>();
   const [deliveryDeadline, setDeliveryDeadline] = useState<Date>();
-  const [goLiveDate, setGoLiveDate] = useState<Date | undefined>();
-  const [goLiveTime, setGoLiveTime] = useState("12:00");
   const [portOfLoading, setPortOfLoading] = useState("");
   const [originZip, setOriginZip] = useState("");
   const [portOfDelivery, setPortOfDelivery] = useState("");
@@ -235,12 +233,6 @@ function ExporterDashboardPage() {
                     setDestinationZip(data.destination?.zipCode || "");
                     setSpecialInstructions(data.specialInstructions || "");
                     
-                    if (data.goLiveDate) {
-                        const goLive = data.goLiveDate.toDate();
-                        setGoLiveDate(goLive);
-                        setGoLiveTime(format(goLive, "HH:mm"));
-                    }
-                    
                     setEditingShipmentId(editId);
                     setOpen(true);
                 } else {
@@ -281,8 +273,6 @@ function ExporterDashboardPage() {
     setDimensionUnit("CMS");
     setDepartureDate(undefined);
     setDeliveryDeadline(undefined);
-    setGoLiveDate(undefined);
-    setGoLiveTime("12:00");
     setPortOfLoading("");
     setOriginZip("");
     setPortOfDelivery("");
@@ -314,14 +304,6 @@ function ExporterDashboardPage() {
     }
     setIsSubmitting(true);
     
-    let goLiveTimestamp = null;
-    if (goLiveDate) {
-        const [hours, minutes] = goLiveTime.split(':').map(Number);
-        const finalGoLiveDate = new Date(goLiveDate);
-        finalGoLiveDate.setHours(hours, minutes, 0, 0);
-        goLiveTimestamp = Timestamp.fromDate(finalGoLiveDate);
-    }
-    
     const shipmentPayload: any = {
       shipmentType,
       productName,
@@ -349,8 +331,7 @@ function ExporterDashboardPage() {
           zipCode: destinationZip,
       },
       specialInstructions,
-      goLiveDate: goLiveTimestamp,
-      status: goLiveTimestamp ? 'scheduled' : 'draft',
+      status: 'draft',
     };
     
     try {
@@ -369,7 +350,7 @@ function ExporterDashboardPage() {
           exporterName: exporterName,
           createdAt: Timestamp.now(),
         });
-        toast({ title: "Success", description: `Shipment request saved as ${shipmentPayload.status}.` });
+        toast({ title: "Success", description: "Shipment request saved as draft." });
       }
       resetForm();
       setOpen(false);
@@ -615,34 +596,7 @@ function ExporterDashboardPage() {
                   </CardContent>
               </Card>
             </div>
-            <DialogFooter className="items-center gap-4">
-              <Popover>
-                <PopoverTrigger asChild>
-                    <Button variant="outline" className="w-full sm:w-auto">
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {goLiveDate ? format(goLiveDate, "PPP") + ` at ${goLiveTime}` : "Set Go-Live Date & Time"}
-                    </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
-                    <Calendar
-                        mode="single"
-                        selected={goLiveDate}
-                        onSelect={setGoLiveDate}
-                        disabled={(date) => date < new Date() || !departureDate || date >= departureDate}
-                        initialFocus
-                    />
-                    <div className="p-3 border-t">
-                        <Label htmlFor="go-live-time" className="text-sm font-medium">Time</Label>
-                        <Input 
-                          id="go-live-time" 
-                          type="time" 
-                          value={goLiveTime} 
-                          onChange={(e) => setGoLiveTime(e.target.value)} 
-                          className="mt-1" 
-                        />
-                    </div>
-                </PopoverContent>
-              </Popover>
+            <DialogFooter>
               <Button type="submit" onClick={handleSubmit} disabled={isSubmitting} className="w-full sm:w-auto">
                 {editingShipmentId ? <Pencil className="mr-2 h-4 w-4" /> : <Send className="mr-2 h-4 w-4" />}
                 {isSubmitting ? 'Saving...' : (editingShipmentId ? 'Save Changes' : 'Submit Request')}

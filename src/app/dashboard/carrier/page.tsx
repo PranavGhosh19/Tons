@@ -121,7 +121,6 @@ export default function CarrierDashboardPage() {
       case 'awarded':
         return 'success';
       case 'draft':
-      case 'scheduled':
         return 'secondary';
       default:
         return 'outline';
@@ -170,12 +169,6 @@ export default function CarrierDashboardPage() {
                     } else {
                         statusBadge = <Badge variant="outline">Closed</Badge>;
                     }
-                } else if (shipment.status === 'scheduled' && shipment.goLiveDate) {
-                  statusBadge = (
-                    <Badge variant={getStatusVariant(shipment.status)} className="capitalize">
-                      Scheduled: {format(shipment.goLiveDate.toDate(), 'dd/MM/yyyy HH:mm')}
-                    </Badge>
-                  );
                 } else {
                     statusBadge = (
                         <Badge variant={getStatusVariant(shipment.status)} className={cn("capitalize", { "animate-blink bg-green-500/80": shipment.status === 'live' })}>
@@ -262,7 +255,6 @@ export default function CarrierDashboardPage() {
                               <p className="text-muted-foreground">
                                 {
                                   selectedShipment.status === 'draft' ? 'This shipment is not yet accepting bids.' :
-                                  selectedShipment.status === 'scheduled' && selectedShipment.goLiveDate ? `Bidding for this shipment will begin on ${format(selectedShipment.goLiveDate.toDate(), "dd/MM/yyyy HH:mm")}.` :
                                   selectedShipment.status === 'awarded' ?
                                       (selectedShipment.winningCarrierId === user?.uid ?
                                           'Congratulations! You won this bid.' :
@@ -290,5 +282,3 @@ export default function CarrierDashboardPage() {
     </div>
   );
 }
-
-    
