@@ -149,7 +149,7 @@ export default function ShipmentDetailPage() {
             return { text: "Draft", description: "This shipment is not yet live." };
         case 'scheduled':
             const goLiveDate = shipment.goLiveDate?.toDate();
-            const formattedDate = goLiveDate ? format(goLiveDate, "dd/MM/yyyy 'at' HH:mm") : 'a future date';
+            const formattedDate = goLiveDate ? format(goLiveDate, "PPP 'at' p") : 'a future date';
             return { text: "Scheduled", description: `Bidding will go live on ${formattedDate}.` };
         case 'live':
             return { text: "Accepting Bids", description: "This shipment is live for carriers to bid on." };
@@ -198,8 +198,8 @@ export default function ShipmentDetailPage() {
                              {shipment.destination?.zipCode && <div><span className="font-semibold text-muted-foreground block mb-1">Destination Zip</span>{shipment.destination.zipCode}</div>}
                         </div>
                         <div className="grid md:grid-cols-2 gap-4 border-b pb-6">
-                             <div><span className="font-semibold text-muted-foreground block mb-1">Departure Date</span>{shipment.departureDate ? format(shipment.departureDate.toDate(), "dd/MM/yyyy") : 'N/A'}</div>
-                             <div><span className="font-semibold text-muted-foreground block mb-1">Delivery Deadline</span>{shipment.deliveryDeadline ? format(shipment.deliveryDeadline.toDate(), "dd/MM/yyyy") : 'N/A'}</div>
+                             <div><span className="font-semibold text-muted-foreground block mb-1">Departure Date</span>{shipment.departureDate ? format(shipment.departureDate.toDate(), "PPP") : 'N/A'}</div>
+                             <div><span className="font-semibold text-muted-foreground block mb-1">Delivery Deadline</span>{shipment.deliveryDeadline ? format(shipment.deliveryDeadline.toDate(), "PPP") : 'N/A'}</div>
                         </div>
                         <div className="space-y-4">
                             <p className="font-semibold text-foreground">Cargo Information</p>
@@ -239,7 +239,7 @@ export default function ShipmentDetailPage() {
                                             <TableRow key={bid.id} className={shipment.winningBidId === bid.id ? "bg-green-100 dark:bg-green-900" : ""}>
                                                 <TableCell className="font-medium">{bid.carrierName}</TableCell>
                                                 <TableCell>${bid.bidAmount.toLocaleString()}</TableCell>
-                                                <TableCell className="hidden sm:table-cell">{bid.createdAt ? format(bid.createdAt.toDate(), "dd/MM/yyyy HH:mm") : 'N/A'}</TableCell>
+                                                <TableCell className="hidden sm:table-cell">{bid.createdAt ? format(bid.createdAt.toDate(), "PPpp") : 'N/A'}</TableCell>
                                                 <TableCell className="text-right">
                                                     {shipment.status === 'awarded' ? (
                                                         shipment.winningBidId === bid.id && <Badge variant="success">Awarded</Badge>
@@ -282,7 +282,3 @@ export default function ShipmentDetailPage() {
     </div>
   );
 }
-
-    
-
-    

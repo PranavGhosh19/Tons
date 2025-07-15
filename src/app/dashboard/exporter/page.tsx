@@ -541,7 +541,7 @@ function ExporterDashboardPage() {
                             disabled={isSubmitting}
                             >
                             <CalendarIcon className="mr-2 h-4 w-4" />
-                            {departureDate ? format(departureDate, "dd/MM/yyyy") : <span>Pick a date</span>}
+                            {departureDate ? format(departureDate, "PPP") : <span>Pick a date</span>}
                             </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0">
@@ -559,7 +559,7 @@ function ExporterDashboardPage() {
                             disabled={isSubmitting || !departureDate}
                             >
                             <CalendarIcon className="mr-2 h-4 w-4" />
-                            {deliveryDeadline ? format(deliveryDeadline, "dd/MM/yyyy") : <span>Pick a date</span>}
+                            {deliveryDeadline ? format(deliveryDeadline, "PPP") : <span>Pick a date</span>}
                             </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0">
@@ -620,7 +620,7 @@ function ExporterDashboardPage() {
                 <PopoverTrigger asChild>
                     <Button variant="outline" className="w-full sm:w-auto">
                         <CalendarIcon className="mr-2 h-4 w-4" />
-                        {goLiveDate ? format(goLiveDate, "dd/MM/yyyy") + ` at ${goLiveTime}` : "Set Go-Live Date & Time"}
+                        {goLiveDate ? format(goLiveDate, "PPP") + ` at ${goLiveTime}` : "Set Go-Live Date & Time"}
                     </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0">
@@ -669,8 +669,8 @@ function ExporterDashboardPage() {
                 <TableRow key={product.id} onClick={() => router.push(`/dashboard/shipment/${product.id}`)} className="cursor-pointer">
                   <TableCell className="font-medium">{product.productName || 'N/A'}</TableCell>
                   <TableCell className="hidden md:table-cell">{product.destination?.portOfDelivery || 'N/A'}</TableCell>
-                  <TableCell className="hidden lg:table-cell">{product.departureDate ? format(product.departureDate.toDate(), "dd/MM/yyyy") : 'N/A'}</TableCell>
-                  <TableCell className="hidden lg:table-cell">{product.deliveryDeadline ? format(product.deliveryDeadline.toDate(), "dd/MM/yyyy") : 'N/A'}</TableCell>
+                  <TableCell className="hidden lg:table-cell">{product.departureDate ? format(product.departureDate.toDate(), "PPP") : 'N/A'}</TableCell>
+                  <TableCell className="hidden lg:table-cell">{product.deliveryDeadline ? format(product.deliveryDeadline.toDate(), "PPP") : 'N/A'}</TableCell>
                   <TableCell className="text-center">
                     {product.status === 'draft' ? (
                        <Button 
@@ -688,7 +688,7 @@ function ExporterDashboardPage() {
                     ) : (
                       <Badge variant={getStatusVariant(product.status)} className={cn("capitalize", { "animate-blink bg-green-500/80": product.status === 'live' })}>
                         {product.status === 'scheduled' && product.goLiveDate ? 
-                          `Scheduled: ${format(product.goLiveDate.toDate(), 'dd/MM/yyyy HH:mm')}` :
+                          `Scheduled: ${format(product.goLiveDate.toDate(), 'PPP p')}` :
                           product.status
                         }
                       </Badge>
@@ -708,5 +708,3 @@ function ExporterDashboardPage() {
     </div>
   );
 }
-
-    
