@@ -11,7 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Check, Rocket, Pencil } from "lucide-react";
+import { ArrowLeft, Check, Rocket, Pencil, Clock } from "lucide-react";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 
@@ -147,6 +147,11 @@ export default function ShipmentDetailPage() {
     switch(shipment.status) {
         case 'draft':
             return { text: "Draft", description: "This shipment is not yet live." };
+        case 'scheduled':
+            if (shipment.goLiveAt) {
+                return { text: "Scheduled", description: `Bidding is set for ${format(shipment.goLiveAt.toDate(), "PPp")}` };
+            }
+            return { text: "Scheduled", description: "This shipment is scheduled to go live." };
         case 'live':
             return { text: "Accepting Bids", description: "This shipment is live for carriers to bid on." };
         case 'awarded':
@@ -167,7 +172,7 @@ export default function ShipmentDetailPage() {
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Back to Dashboard
             </Button>
-            {(shipment.status === 'draft') && (
+            {(shipment.status === 'draft' || shipment.status === 'scheduled') && (
                 <Button variant="outline" onClick={() => router.push(`/dashboard/exporter?edit=${shipmentId}`)}>
                     <Pencil className="mr-2 h-4 w-4" />
                     Edit Shipment
@@ -249,8 +254,14 @@ export default function ShipmentDetailPage() {
                                 </Table>
                             ) : (
                                 <div className="text-center py-8 text-muted-foreground">
-                                    <p>Check back soon for bids from our carrier network.</p>
-
+                                    {shipment.status === 'scheduled' && shipment.goLiveAt ? (
+                                         <div className="flex items-center justify-center gap-2">
+                                            <Clock className="h-4 w-4" />
+                                            <p>Bidding for this shipment is set for {format(shipment.goLiveAt.toDate(), "PPp")}</p>
+                                         </div>
+                                    ) : (
+                                         <p>Check back soon for bids from our carrier network.</p>
+                                    )}
                                 </div>
                             )}
                         </CardContent>
