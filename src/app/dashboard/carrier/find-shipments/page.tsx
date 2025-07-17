@@ -4,7 +4,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from 'next/navigation';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { collection, query, getDocs, DocumentData, orderBy, doc, getDoc, addDoc, Timestamp, where, collectionGroup } from 'firebase/firestore';
+import { collection, query, getDocs, DocumentData, orderBy, doc, getDoc, collectionGroup, where } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -14,7 +14,7 @@ import { format } from "date-fns";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Send, Info, Check } from "lucide-react";
+import { Send, Info } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -28,7 +28,7 @@ export default function FindShipmentsPage() {
   const [isBidDialogOpen, setIsBidDialogOpen] = useState(false);
   const [selectedShipment, setSelectedShipment] = useState<DocumentData | null>(null);
   const [bidAmount, setBidAmount] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmittingBid, setIsSubmittingBid] = useState(false);
   
   const router = useRouter();
   const { toast } = useToast();
@@ -82,7 +82,6 @@ export default function FindShipmentsPage() {
     if (shipment.status === 'live') {
       router.push(`/dashboard/carrier/shipment/${shipment.id}`);
     } else {
-      // For draft, awarded, etc., open the existing details dialog
       handleOpenBidDialog(shipment);
     }
   };
@@ -96,13 +95,13 @@ export default function FindShipmentsPage() {
       toast({ title: "Info", description: "This shipment is not currently accepting bids.", variant: "default" });
       return;
     }
-    setIsSubmitting(true);
+    setIsSubmittingBid(true);
     try {
       await addDoc(collection(db, "shipments", selectedShipment.id, "bids"), {
         carrierId: user.uid,
         carrierName: carrierName,
         bidAmount: parseFloat(bidAmount),
-        createdAt: Timestamp.now(),
+        createdAt: new Date(),
       });
       toast({ title: "Success", description: "Your bid has been placed." });
       setIsBidDialogOpen(false);
@@ -111,7 +110,7 @@ export default function FindShipmentsPage() {
       console.error("Error placing bid: ", error);
       toast({ title: "Error", description: "Failed to place your bid.", variant: "destructive" });
     } finally {
-      setIsSubmitting(false);
+      setIsSubmittingBid(false);
     }
   };
 
@@ -267,7 +266,7 @@ export default function FindShipmentsPage() {
                                 placeholder="e.g., 2500"
                                 value={bidAmount}
                                 onChange={(e) => setBidAmount(e.target.value)}
-                                disabled={isSubmitting}
+                                disabled={isSubmittingBid}
                                 className="rounded-l-none"
                                 />
                             </div>
@@ -290,9 +289,9 @@ export default function FindShipmentsPage() {
                     <RegisterButton shipmentId={selectedShipment.id} user={user} />
                   )}
                   {selectedShipment?.status === 'live' && (
-                    <Button onClick={handlePlaceBid} disabled={isSubmitting}>
+                    <Button onClick={handlePlaceBid} disabled={isSubmittingBid}>
                         <Send className="mr-2 h-4 w-4" />
-                        {isSubmitting ? 'Placing Bid...' : 'Place Bid'}
+                        {isSubmittingBid ? 'Placing Bid...' : 'Place Bid'}
                     </Button>
                   )}
               </DialogFooter>
