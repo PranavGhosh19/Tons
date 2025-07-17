@@ -18,13 +18,27 @@ service cloud.firestore {
       allow read, update: if request.auth.uid == userId;
       allow create: if request.auth.uid == userId && request.resource.data.email == request.auth.token.email;
     }
-
-    // This rule is required for the collection group query in FindShipmentsPage to work.
-    // It allows a carrier to list all of their own registrations across all shipments.
+    
+    // Rules for all 'register' subcollections across all documents
     match /{path=**}/register/{docId} {
+      // Allow listing a carrier’s own registrations (needed for collectionGroup query)
       allow list: if request.auth.uid != null
                   && isCarrier(request.auth.uid)
-                  && request.query.get('where')[0][2] == request.auth.uid;
+                  && request.query.where.size() == 1
+                  && request.query.where[0][0] == 'carrierId'
+                  && request.query.where[0][1] == '=='
+                  && request.query.where[0][2] == request.auth.uid;
+
+      // Allow reading own registration doc
+      allow read: if request.auth.uid != null 
+                  && isCarrier(request.auth.uid) 
+                  && resource.data.carrierId == request.auth.uid;
+
+      // Allow creating a registration under a scheduled shipment
+      allow create: if request.auth.uid != null
+                    && isCarrier(request.auth.uid)
+                    && request.auth.uid == resource.data.carrierId
+                    && get(/databases/$(database)/documents/shipments/$(path[1])).data.status == 'scheduled';
     }
 
     // Rules for the shipments collection
@@ -76,21 +90,6 @@ service cloud.firestore {
                       && isCarrier(request.auth.uid) 
                       && request.resource.data.carrierId == request.auth.uid
                       && get(/databases/$(database)/documents/shipments/$(shipmentId)).data.status == 'live';
-      }
-
-      // Rules for the register subcollection
-      match /register/{carrierId} {
-        // Allow carriers to read their own registration
-        allow read: if request.auth.uid != null 
-                    && isCarrier(request.auth.uid) 
-                    && request.auth.uid == carrierId;
-
-        // Carriers can create registrations for themselves on 'scheduled' shipments.
-        allow create: if request.auth.uid != null
-                      && isCarrier(request.auth.uid)
-                      && request.auth.uid == carrierId
-                      && request.resource.data.carrierId == request.auth.uid
-                      && get(/databases/$(database)/documents/shipments/$(shipmentId)).data.status == 'scheduled';
       }
     }
   }
