@@ -51,39 +51,38 @@ export default function FindShipmentsPage() {
     return () => unsubscribe();
   }, [router]);
   
-  const fetchShipments = useCallback(async () => {
+  const loadInitialData = useCallback(async (uid: string) => {
     setLoading(true);
     try {
-      const shipmentsQuery = query(collection(db, 'shipments'), orderBy('createdAt', 'desc'));
-      const querySnapshot = await getDocs(shipmentsQuery);
-      const shipmentsList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setShipments(shipmentsList);
-    } catch (error: any) {
-      console.error("Error fetching shipments: ", error);
-      toast({ title: "Error", description: "Could not fetch available shipments.", variant: "destructive" });
+        const shipmentsQuery = query(collection(db, 'shipments'), orderBy('createdAt', 'desc'));
+        const registrationsQuery = query(collectionGroup(db, 'register'), where('carrierId', '==', uid));
+
+        const [shipmentsSnapshot, registrationsSnapshot] = await Promise.all([
+            getDocs(shipmentsQuery),
+            getDocs(registrationsQuery)
+        ]);
+        
+        const shipmentsList = shipmentsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const registrationIds = new Set(registrationsSnapshot.docs.map(doc => doc.ref.parent.parent!.id));
+
+        setShipments(shipmentsList);
+        setRegisteredShipmentIds(registrationIds);
+        
+    } catch (error) {
+        console.error("Error fetching initial data: ", error);
+        toast({ title: "Error", description: "Could not fetch necessary data.", variant: "destructive" });
     } finally {
-      setLoading(false);
+        setLoading(false);
     }
   }, [toast]);
 
-  const fetchRegisteredShipments = useCallback(async (uid: string) => {
-    try {
-        const registrationsQuery = query(collectionGroup(db, 'register'), where('carrierId', '==', uid));
-        const querySnapshot = await getDocs(registrationsQuery);
-        const ids = new Set(querySnapshot.docs.map(doc => doc.ref.parent.parent!.id));
-        setRegisteredShipmentIds(ids);
-    } catch (error) {
-        console.error("Error fetching registered shipments: ", error);
-        // Do not show a toast for this background fetch
-    }
-  }, []);
-
   useEffect(() => {
     if (user) {
-        fetchShipments();
-        fetchRegisteredShipments(user.uid);
+        loadInitialData(user.uid);
+    } else {
+        setLoading(false);
     }
-  }, [user, fetchShipments, fetchRegisteredShipments]);
+  }, [user, loadInitialData]);
 
   const handleOpenBidDialog = (shipment: DocumentData) => {
     setSelectedShipment(shipment);
@@ -186,7 +185,7 @@ export default function FindShipmentsPage() {
   };
 
 
-  if (loading || !user) {
+  if (loading) {
     return (
         <div className="container py-6 md:py-10">
             <div className="flex justify-between items-center mb-8">
