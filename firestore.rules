@@ -68,6 +68,16 @@ service cloud.firestore {
                       && request.resource.data.carrierId == request.auth.uid
                       && get(/databases/$(database)/documents/shipments/$(shipmentId)).data.status == 'live';
       }
+      
+      // Rules for the register subcollection
+      match /register/{carrierId} {
+        // Carriers can create registrations for themselves on 'scheduled' shipments.
+        allow create: if request.auth.uid != null
+                      && isCarrier(request.auth.uid)
+                      && request.auth.uid == carrierId
+                      && request.resource.data.carrierId == request.auth.uid
+                      && get(/databases/$(database)/documents/shipments/$(shipmentId)).data.status == 'scheduled';
+      }
     }
   }
 }
