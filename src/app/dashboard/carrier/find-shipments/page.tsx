@@ -133,7 +133,7 @@ export default function FindShipmentsPage() {
 
     switch (selectedShipment.status) {
         case 'draft':
-            return 'This shipment is not yet accepting bids.';
+            return 'This shipment is not yet scheduled.';
         case 'scheduled':
             if (selectedShipment.goLiveAt) {
                 return `Bidding for this shipment is set for ${format(selectedShipment.goLiveAt.toDate(), "PPp")}`;
@@ -285,8 +285,8 @@ export default function FindShipmentsPage() {
               )}
               <DialogFooter>
                   <Button variant="outline" onClick={() => setIsBidDialogOpen(false)}>Cancel</Button>
-                  {(selectedShipment?.status === 'draft' || selectedShipment?.status === 'scheduled') && (
-                      <Button disabled={selectedShipment?.status === 'draft'}>I want to Bid</Button>
+                  {selectedShipment?.status === 'scheduled' && (
+                      <Button>I want to Bid</Button>
                   )}
                   {selectedShipment?.status === 'live' && (
                     <Button onClick={handlePlaceBid} disabled={isSubmitting}>
@@ -300,3 +300,5 @@ export default function FindShipmentsPage() {
     </div>
   );
 }
+
+    
