@@ -70,7 +70,12 @@ export function NavLinks() {
   return (
     <nav className="hidden sm:flex items-center gap-4 text-sm font-medium">
       {links.map((link) => {
-        const isActive = pathname.startsWith(link.href);
+        let isActive = false;
+        if (link.href === "/dashboard/carrier") {
+          isActive = pathname === link.href;
+        } else {
+          isActive = pathname.startsWith(link.href);
+        }
         return (
           <Link
             key={link.href}
@@ -173,7 +178,12 @@ export function MobileNavLinks() {
                 </SheetHeader>
                 <div className="flex flex-col gap-3 py-4 text-lg font-medium">
                     {links.map((link) => {
-                        const isActive = pathname.startsWith(link.href);
+                        let isActive = false;
+                        if (link.href === "/dashboard/carrier") {
+                            isActive = pathname === link.href;
+                        } else {
+                            isActive = pathname.startsWith(link.href);
+                        }
                         return (
                         <button
                             key={link.href}
@@ -310,5 +320,3 @@ export function MobileMenu() {
         </div>
     );
 }
-
-    
