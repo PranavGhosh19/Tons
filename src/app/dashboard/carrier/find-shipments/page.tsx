@@ -178,6 +178,7 @@ export default function FindShipmentsPage() {
                 <TableHead className="hidden md:table-cell">Origin</TableHead>
                 <TableHead className="hidden md:table-cell">Destination</TableHead>
                 <TableHead className="hidden lg:table-cell text-right">Delivery Deadline</TableHead>
+                <TableHead className="hidden lg:table-cell text-right">Go Live At</TableHead>
                 <TableHead className="text-center">Status</TableHead>
               </TableRow>
             </TableHeader>
@@ -205,6 +206,7 @@ export default function FindShipmentsPage() {
                     <TableCell className="hidden md:table-cell">{shipment.origin?.portOfLoading || 'N/A'}</TableCell>
                     <TableCell className="hidden md:table-cell">{shipment.destination?.portOfDelivery || 'N/A'}</TableCell>
                     <TableCell className="hidden lg:table-cell text-right">{shipment.deliveryDeadline ? format(shipment.deliveryDeadline.toDate(), "dd/MM/yyyy") : 'N/A'}</TableCell>
+                    <TableCell className="hidden lg:table-cell text-right">{shipment.goLiveAt ? format(shipment.goLiveAt.toDate(), "dd/MM/yyyy p") : 'N/A'}</TableCell>
                     <TableCell className="text-center">
                         {statusBadge}
                     </TableCell>
@@ -298,5 +300,3 @@ export default function FindShipmentsPage() {
     </div>
   );
 }
-
-    
