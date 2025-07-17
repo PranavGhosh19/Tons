@@ -19,6 +19,14 @@ service cloud.firestore {
       allow create: if request.auth.uid == userId && request.resource.data.email == request.auth.token.email;
     }
 
+    // This rule is required for the collection group query in FindShipmentsPage to work.
+    // It allows a carrier to list all of their own registrations across all shipments.
+    match /{path=**}/register/{docId} {
+      allow list: if request.auth.uid != null
+                  && isCarrier(request.auth.uid)
+                  && request.query.get('where')[0][2] == request.auth.uid;
+    }
+
     // Rules for the shipments collection
     match /shipments/{shipmentId} {
       // Exporters can create shipments for themselves
@@ -62,15 +70,21 @@ service cloud.firestore {
                       (isExporter(request.auth.uid) && get(/databases/$(database)/documents/shipments/$(shipmentId)).data.exporterId == request.auth.uid) ||
                       isCarrier(request.auth.uid)
                     );
+
         // Carriers can create bids for themselves, but only on 'live' shipments.
         allow create: if request.auth.uid != null 
                       && isCarrier(request.auth.uid) 
                       && request.resource.data.carrierId == request.auth.uid
                       && get(/databases/$(database)/documents/shipments/$(shipmentId)).data.status == 'live';
       }
-      
+
       // Rules for the register subcollection
       match /register/{carrierId} {
+        // Allow carriers to read their own registration
+        allow read: if request.auth.uid != null 
+                    && isCarrier(request.auth.uid) 
+                    && request.auth.uid == carrierId;
+
         // Carriers can create registrations for themselves on 'scheduled' shipments.
         allow create: if request.auth.uid != null
                       && isCarrier(request.auth.uid)
