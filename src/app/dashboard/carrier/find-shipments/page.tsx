@@ -286,7 +286,7 @@ export default function FindShipmentsPage() {
               <DialogFooter>
                   <Button variant="outline" onClick={() => setIsBidDialogOpen(false)}>Cancel</Button>
                   {(selectedShipment?.status === 'draft' || selectedShipment?.status === 'scheduled') && (
-                      <Button>I want to Bid</Button>
+                      <Button disabled={selectedShipment?.status === 'draft'}>I want to Bid</Button>
                   )}
                   {selectedShipment?.status === 'live' && (
                     <Button onClick={handlePlaceBid} disabled={isSubmitting}>
