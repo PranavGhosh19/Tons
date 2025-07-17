@@ -4,7 +4,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from 'next/navigation';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { collection, query, getDocs, DocumentData, orderBy, doc, getDoc, addDoc, Timestamp, setDoc } from 'firebase/firestore';
+import { collection, query, getDocs, DocumentData, orderBy, doc, getDoc, addDoc, Timestamp, setDoc, where, collectionGroup } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -14,7 +14,7 @@ import { format } from "date-fns";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Send, Info } from "lucide-react";
+import { Send, Info, Check } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -23,6 +23,7 @@ export default function FindShipmentsPage() {
   const [user, setUser] = useState<User | null>(null);
   const [carrierName, setCarrierName] = useState<string>("");
   const [shipments, setShipments] = useState<DocumentData[]>([]);
+  const [registeredShipmentIds, setRegisteredShipmentIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [isBidDialogOpen, setIsBidDialogOpen] = useState(false);
   const [selectedShipment, setSelectedShipment] = useState<DocumentData | null>(null);
@@ -65,11 +66,24 @@ export default function FindShipmentsPage() {
     }
   }, [toast]);
 
+  const fetchRegisteredShipments = useCallback(async (uid: string) => {
+    try {
+        const registrationsQuery = query(collectionGroup(db, 'register'), where('carrierId', '==', uid));
+        const querySnapshot = await getDocs(registrationsQuery);
+        const ids = new Set(querySnapshot.docs.map(doc => doc.ref.parent.parent!.id));
+        setRegisteredShipmentIds(ids);
+    } catch (error) {
+        console.error("Error fetching registered shipments: ", error);
+        // Do not show a toast for this background fetch
+    }
+  }, []);
+
   useEffect(() => {
     if (user) {
         fetchShipments();
+        fetchRegisteredShipments(user.uid);
     }
-  }, [user, fetchShipments]);
+  }, [user, fetchShipments, fetchRegisteredShipments]);
 
   const handleOpenBidDialog = (shipment: DocumentData) => {
     setSelectedShipment(shipment);
@@ -127,6 +141,7 @@ export default function FindShipmentsPage() {
             registeredAt: Timestamp.now(),
         });
         toast({ title: "Success", description: "You have registered your interest for this shipment." });
+        setRegisteredShipmentIds(prev => new Set(prev).add(selectedShipment.id));
         setIsBidDialogOpen(false);
     } catch (error) {
         console.error("Error registering interest: ", error);
@@ -183,6 +198,7 @@ export default function FindShipmentsPage() {
   }
 
   const hasDimensions = selectedShipment?.cargo?.dimensions?.length && selectedShipment?.cargo?.dimensions?.width && selectedShipment?.cargo?.dimensions?.height;
+  const isAlreadyRegistered = selectedShipment && registeredShipmentIds.has(selectedShipment.id);
 
   return (
     <div className="container py-6 md:py-10">
@@ -308,9 +324,16 @@ export default function FindShipmentsPage() {
               <DialogFooter>
                   <Button variant="outline" onClick={() => setIsBidDialogOpen(false)}>Cancel</Button>
                   {selectedShipment?.status === 'scheduled' && (
-                      <Button onClick={handleRegisterInterest} disabled={isSubmitting}>
-                        {isSubmitting ? 'Registering...' : 'I want to Bid'}
-                      </Button>
+                    isAlreadyRegistered ? (
+                        <Button variant="outline" disabled>
+                            <Check className="mr-2 h-4 w-4" />
+                            Registered
+                        </Button>
+                    ) : (
+                        <Button onClick={handleRegisterInterest} disabled={isSubmitting}>
+                            {isSubmitting ? 'Registering...' : 'I want to Bid'}
+                        </Button>
+                    )
                   )}
                   {selectedShipment?.status === 'live' && (
                     <Button onClick={handlePlaceBid} disabled={isSubmitting}>
@@ -324,3 +347,5 @@ export default function FindShipmentsPage() {
     </div>
   );
 }
+
+    
