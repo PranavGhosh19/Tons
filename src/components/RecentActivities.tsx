@@ -116,7 +116,11 @@ export function RecentActivities() {
   }, [user]);
 
   const handleRowClick = (shipment: Shipment) => {
-    router.push(`/dashboard/carrier/shipment/${shipment.id}`);
+    if (shipment.status === 'live') {
+      router.push(`/dashboard/carrier/shipment/${shipment.id}`);
+    } else {
+      router.push(`/dashboard/carrier/registered-shipment/${shipment.id}`);
+    }
   };
 
   if (loading) {
