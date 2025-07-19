@@ -80,12 +80,12 @@ const Header = () => (
 );
 
 const Footer = () => (
-  <footer className="py-6 md:px-8 md:py-0 border-t">
-    <div className="container relative flex h-24 items-center justify-center">
+  <footer className="py-6 md:px-8 md:py-0 border-t pb-24 sm:pb-6">
+    <div className="container relative flex h-12 items-center justify-center">
       <p className="text-center text-sm text-muted-foreground">
         &copy; 2025 Shipping Battlefield. All rights reserved.
       </p>
-      <div className="absolute right-6 md:right-8">
+      <div className="absolute right-6 md:right-8 hidden sm:block">
         <Clock />
       </div>
     </div>
@@ -113,7 +113,7 @@ export default function RootLayout({
         >
             <div className="relative flex min-h-screen flex-col">
             <Header />
-            <div className="flex-1 pb-16 sm:pb-0">{children}</div>
+            <div className="flex-1">{children}</div>
             <Footer />
             </div>
             <BottomBar />
