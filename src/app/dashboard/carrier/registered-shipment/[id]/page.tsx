@@ -10,7 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Clock } from "lucide-react";
+import { ArrowLeft, Check, Clock } from "lucide-react";
 import { format } from "date-fns";
 
 export default function RegisteredShipmentDetailPage() {
@@ -90,9 +90,9 @@ export default function RegisteredShipmentDetailPage() {
     switch(shipment.status) {
         case 'scheduled':
              if (shipment.goLiveAt) {
-                return { text: "Scheduled", description: `Bidding will start on ${format(shipment.goLiveAt.toDate(), "PPp")}` };
+                return { text: "Registered", description: `Bidding will start on ${format(shipment.goLiveAt.toDate(), "PPp")}` };
             }
-            return { text: "Scheduled", description: "This shipment is scheduled to go live soon." };
+            return { text: "Registered", description: "This shipment is scheduled to go live soon." };
         case 'awarded':
             return { text: "Awarded", description: `This shipment has been awarded to a carrier.` };
         default:
@@ -157,7 +157,7 @@ export default function RegisteredShipmentDetailPage() {
               <CardContent className="space-y-6">
                 <div className="flex flex-col items-center justify-center p-4 bg-secondary rounded-lg">
                   <div className="flex items-center gap-2">
-                    <Clock className="h-6 w-6 text-primary" />
+                    <Check className="h-6 w-6 text-primary" />
                     <p className="text-lg font-semibold">{statusInfo.text}</p>
                   </div>
                 </div>
