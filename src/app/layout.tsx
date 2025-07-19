@@ -54,22 +54,28 @@ const LogoIcon = (props: React.SVGProps<SVGSVGElement>) => (
 const Header = () => (
   <header
     className={cn(
-      "hidden sm:flex sticky top-0 z-50 w-full border-b bg-white/80 backdrop-blur-sm dark:bg-background/80"
+      "sticky top-0 z-50 w-full border-b bg-white/80 backdrop-blur-sm dark:bg-background/80"
     )}
   >
     <div className="container flex h-16 items-center">
-      <div className="flex items-center gap-6">
+      {/* Centered Logo on small screens, left-aligned on larger screens */}
+      <div className="flex-1 sm:flex-none">
         <Link
           href="/"
-          className="flex items-center gap-2 font-bold text-lg font-headline"
+          className="flex items-center gap-2 font-bold text-lg font-headline justify-center sm:justify-start"
         >
           <LogoIcon />
-          <span className="hidden sm:block font-bold text-base sm:text-xl">Shipping Battlefield</span>
+          <span className="font-bold text-base sm:text-xl">Shipping Battlefield</span>
         </Link>
+      </div>
+
+      {/* NavLinks appear on larger screens */}
+      <div className="hidden sm:flex items-center gap-6 ml-6">
         <NavLinks />
       </div>
       
-       <div className="ml-auto flex items-center gap-2">
+      {/* Auth buttons and MobileMenu appear on larger screens */}
+       <div className="ml-auto hidden sm:flex items-center gap-2">
          <div className="hidden sm:flex">
             <AuthButton />
          </div>
