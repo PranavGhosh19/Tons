@@ -24,9 +24,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTr
 import { Separator } from "./ui/separator";
 
 const exporterNavLinks = [
-  { href: "/dashboard", label: "Dashboard" },
-  { href: "/dashboard/shipment", label: "Shipments" },
-  { href: "/dashboard/carrier", label: "Carriers" },
+  { href: "/dashboard/exporter", label: "My Shipments" },
   { href: "/dashboard/analytics", label: "Analytics" },
 ];
 
@@ -71,7 +69,7 @@ export function NavLinks() {
     <nav className="hidden sm:flex items-center gap-4 text-sm font-medium">
       {links.map((link) => {
         let isActive = false;
-        if (link.href === "/dashboard/carrier") {
+        if (link.href === "/dashboard/exporter" || link.href === "/dashboard/carrier") {
           isActive = pathname === link.href;
         } else {
           isActive = pathname.startsWith(link.href);
@@ -179,7 +177,7 @@ export function MobileNavLinks() {
                 <div className="flex flex-col gap-3 py-4 text-lg font-medium">
                     {links.map((link) => {
                         let isActive = false;
-                        if (link.href === "/dashboard/carrier") {
+                        if (link.href === "/dashboard/carrier" || link.href === "/dashboard/exporter") {
                             isActive = pathname === link.href;
                         } else {
                             isActive = pathname.startsWith(link.href);
