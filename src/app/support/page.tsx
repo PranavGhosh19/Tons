@@ -9,11 +9,9 @@ import {
 } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Mail, MessageSquare, Send } from "lucide-react";
+import { Mail, MessageSquare } from "lucide-react";
+import Link from "next/link";
 
 const faqs = [
     {
@@ -40,16 +38,6 @@ const faqs = [
 
 export default function SupportPage() {
     const { toast } = useToast();
-
-    const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
-        // Here you would typically handle form submission, e.g., send to an API endpoint
-        toast({
-            title: "Message Sent!",
-            description: "Thank you for contacting us. We'll get back to you shortly.",
-        });
-        (e.target as HTMLFormElement).reset();
-    }
 
     return (
         <div className="container py-12 md:py-16">
@@ -79,31 +67,19 @@ export default function SupportPage() {
                     <Card>
                         <CardHeader>
                             <CardTitle className="font-headline">Contact Us</CardTitle>
-                            <CardDescription>Can't find an answer? Send us a message.</CardDescription>
+                            <CardDescription>Can't find an answer? Reach out to us.</CardDescription>
                         </CardHeader>
-                        <CardContent>
-                            <form className="space-y-4" onSubmit={handleSubmit}>
-                                <div className="space-y-2">
-                                    <Label htmlFor="name">Full Name</Label>
-                                    <Input id="name" placeholder="John Doe" required />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="email">Email Address</Label>
-                                    <Input id="email" type="email" placeholder="you@example.com" required />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="subject">Subject</Label>
-                                    <Input id="subject" placeholder="e.g., Question about bidding" required />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="message">Message</Label>
-                                    <Textarea id="message" placeholder="Please describe your issue..." required />
-                                </div>
-                                <Button type="submit" className="w-full">
-                                    <Send className="mr-2 h-4 w-4" />
-                                    Send Message
-                                </Button>
-                            </form>
+                        <CardContent className="space-y-4">
+                           <Button asChild className="w-full">
+                                <Link href="mailto:support@shipshape.com">
+                                    <Mail className="mr-2 h-4 w-4" />
+                                    Email Us
+                                </Link>
+                           </Button>
+                           <Button variant="outline" className="w-full" onClick={() => toast({ title: "Coming Soon!", description: "Live chat will be available soon."})}>
+                               <MessageSquare className="mr-2 h-4 w-4" />
+                               Live Chat
+                           </Button>
                         </CardContent>
                     </Card>
                 </div>
