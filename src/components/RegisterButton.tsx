@@ -82,12 +82,39 @@ export const RegisterButton: React.FC<RegisterButtonProps> = ({ shipmentId, user
 
         // Step 2: Open Razorpay Checkout
         const options = {
-            key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "YOUR_KEY_ID",
+            key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "rzp_test_YOUR_KEY_ID",
             amount: order.amount,
             currency: order.currency,
             name: "Shipment Battlefield",
             description: "Shipment Bid Registration Fee",
             order_id: order.id,
+            config: {
+              display: {
+                blocks: {
+                  banks: {
+                    name: 'All payment methods',
+                    instruments: [
+                      {
+                          method: 'upi'
+                      },
+                      {
+                          method: 'card'
+                      },
+                      {
+                          method: 'wallet'
+                      },
+                      {
+                          method: 'netbanking'
+                      }
+                    ],
+                  },
+                },
+                sequence: ['block.banks'],
+                preferences: {
+                  show_default_blocks: true,
+                },
+              },
+            },
             handler: async function (response: any) {
                 // Step 3: On successful payment, register the user
                 try {
