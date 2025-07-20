@@ -286,10 +286,14 @@ export default function FindShipmentsPage() {
               <DialogFooter>
                   <Button variant="outline" onClick={() => setIsBidDialogOpen(false)}>Cancel</Button>
                   {selectedShipment?.status === 'scheduled' && user && (
-                    <RegisterButton shipmentId={selectedShipment.id} user={user} onRegisterSuccess={() => {
-                        setShipments(prev => prev.filter(s => s.id !== selectedShipment.id));
-                        setIsBidDialogOpen(false);
-                    }} />
+                    <RegisterButton 
+                        shipmentId={selectedShipment.id} 
+                        user={user} 
+                        onRegisterSuccess={(id) => {
+                            setShipments(prev => prev.filter(s => s.id !== id));
+                            setIsBidDialogOpen(false);
+                        }} 
+                    />
                   )}
                   {selectedShipment?.status === 'live' && (
                     <Button onClick={handlePlaceBid} disabled={isSubmittingBid}>

@@ -30,7 +30,7 @@ declare global {
 interface RegisterButtonProps {
   shipmentId: string;
   user: User | null;
-  onRegisterSuccess: () => void;
+  onRegisterSuccess: (shipmentId: string) => void;
 }
 
 export const RegisterButton: React.FC<RegisterButtonProps> = ({ shipmentId, user, onRegisterSuccess }) => {
@@ -147,7 +147,7 @@ export const RegisterButton: React.FC<RegisterButtonProps> = ({ shipmentId, user
                     });
                     setIsRegistered(true);
                     toast({ title: "Success", description: "You have registered your interest for this shipment." });
-                    onRegisterSuccess();
+                    onRegisterSuccess(shipmentId);
                 } catch (error) {
                      console.error('Error saving registration:', error);
                      toast({ title: "Registration Error", description: "Payment was successful, but failed to save your registration. Please contact support.", variant: "destructive" });
