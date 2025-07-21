@@ -9,6 +9,21 @@ import { auth, db } from '@/lib/firebase';
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, Truck, Anchor } from "lucide-react";
+import Link from "next/link";
+
+const DashboardCard = ({ title, description, href, icon: Icon }: { title: string, description: string, href: string, icon: React.ElementType }) => (
+    <Link href={href}>
+        <Card className="hover:border-primary hover:bg-secondary transition-all h-full">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-lg font-medium">{title}</CardTitle>
+                <Icon className="h-5 w-5 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+                <p className="text-sm text-muted-foreground">{description}</p>
+            </CardContent>
+        </Card>
+    </Link>
+);
 
 export default function EmployeeDashboardPage() {
   const [user, setUser] = useState<User | null>(null);
@@ -59,15 +74,12 @@ export default function EmployeeDashboardPage() {
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-lg font-medium">Manage Shipments</CardTitle>
-                <Truck className="h-5 w-5 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-                <p className="text-sm text-muted-foreground">View and manage all active and past shipments.</p>
-            </CardContent>
-        </Card>
+        <DashboardCard 
+            title="Manage Shipments"
+            description="View and manage all active and past shipments."
+            href="/dashboard/manage-shipments"
+            icon={Truck}
+        />
          <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-lg font-medium">User Management</CardTitle>

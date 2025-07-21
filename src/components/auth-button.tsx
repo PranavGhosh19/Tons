@@ -34,7 +34,7 @@ const carrierNavLinks = [
 ];
 
 const employeeNavLinks = [
-    { href: "/dashboard/employee", label: "Employee Dashboard" },
+    { href: "/dashboard/employee", label: "Dashboard" },
     { href: "/dashboard/manage-shipments", label: "Manage Shipments" },
 ];
 
@@ -305,7 +305,7 @@ export function AuthButton() {
             <DropdownMenuLabel>My Account</DropdownMenuLabel>
             <DropdownMenuSeparator />
              {userType === 'employee' && (
-                <DropdownMenuItem onClick={() => router.push('/dashboard/employee')}>
+                <DropdownMenuItem onClick={() => router.push('/dashboard/manage-shipments')}>
                     <Shield className="mr-2 h-4 w-4" />
                     <span>Admin Panel</span>
                 </DropdownMenuItem>
