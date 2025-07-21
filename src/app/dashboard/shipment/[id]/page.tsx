@@ -276,12 +276,6 @@ export default function ShipmentDetailPage() {
                     </CardHeader>
                     <CardContent>
                         <p className="text-2xl font-bold font-headline text-accent-foreground capitalize">{statusInfo.text}</p>
-                        {(shipment.status === 'draft' || shipment.status === 'scheduled') && (
-                            <Button className="w-full mt-4" onClick={handleGoLive} disabled={isSubmitting}>
-                                <Rocket className="mr-2 h-4 w-4" />
-                                {isSubmitting ? 'Going Live...' : 'Go Live'}
-                            </Button>
-                        )}
                     </CardContent>
                 </Card>
             </div>
