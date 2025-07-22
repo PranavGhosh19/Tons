@@ -36,13 +36,15 @@ service cloud.firestore {
         request.resource.data.exporterId == request.auth.uid
       );
 
-      // Read (Get, List)
-      allow read: if request.auth.uid != null && (
-        isEmployee(request.auth.uid) ||
-        (isExporter(request.auth.uid) && resource.data.exporterId == request.auth.uid) ||
-        (isCarrier(request.auth.uid) && ['draft', 'scheduled', 'live', 'awarded'].includes(resource.data.status))
+      // Read (Get & List)
+      allow read: if isEmployee(request.auth.uid) || (
+        request.auth.uid != null && (
+          (isExporter(request.auth.uid) && resource.data.exporterId == request.auth.uid) ||
+          (isCarrier(request.auth.uid) &&
+            ['draft', 'scheduled', 'live', 'awarded'].contains(resource.data.status))
+        )
       );
-      
+
       // Update
       allow update: if request.auth.uid != null && (
         isEmployee(request.auth.uid) ||
@@ -50,7 +52,7 @@ service cloud.firestore {
           isExporter(request.auth.uid) &&
           resource.data.exporterId == request.auth.uid &&
           (
-            ( // Allow edits in draft or scheduled state
+            ( // Allow edits on draft/scheduled shipments
               (resource.data.status == 'draft' || resource.data.status == 'scheduled') &&
               request.resource.data.exporterId == resource.data.exporterId && // Cannot change owner
               request.resource.data.createdAt == resource.data.createdAt // Cannot change creation time
