@@ -1,3 +1,4 @@
+
 rules_version = '2';
 
 service cloud.firestore {
@@ -40,34 +41,28 @@ service cloud.firestore {
       allow read: if isEmployee(request.auth.uid) || (
         request.auth.uid != null && (
           (isExporter(request.auth.uid) && resource.data.exporterId == request.auth.uid) ||
-          (isCarrier(request.auth.uid)) // Carriers can read any shipment detail
+          (isCarrier(request.auth.uid) &&
+            ['draft', 'scheduled', 'live', 'awarded'].contains(resource.data.status))
         )
       );
 
       // Update
-      allow update: if request.auth.uid != null && (
-        // Employees have full update access
-        isEmployee(request.auth.uid) ||
-
-        // Exporters can edit their own shipments under specific conditions
+      allow update: if isEmployee(request.auth.uid) || (
+        request.auth.uid != null &&
+        isExporter(request.auth.uid) &&
+        resource.data.exporterId == request.auth.uid &&
         (
-          isExporter(request.auth.uid) &&
-          resource.data.exporterId == request.auth.uid &&
           (
-            // Allow edits only on draft or scheduled shipments
-            (
-              (resource.data.status == 'draft' || resource.data.status == 'scheduled') &&
-              request.resource.data.status == resource.data.status && // Status cannot be changed here
-              request.resource.data.exporterId == resource.data.exporterId &&
-              request.resource.data.createdAt == resource.data.createdAt
-            ) ||
-            // Allow awarding a bid
-            (
-              resource.data.status == 'live' &&
-              request.resource.data.status == 'awarded' &&
-              request.resource.data.winningBidId != null &&
-              request.resource.data.winningBidId == resource.data.winningBidId // Prevent changing winning bid
-            )
+            (resource.data.status == 'draft' || resource.data.status == 'scheduled') &&
+            request.resource.data.exporterId == resource.data.exporterId &&
+            request.resource.data.createdAt == resource.data.createdAt
+          ) || (
+            (resource.data.status == 'draft' || resource.data.status == 'scheduled') &&
+            request.resource.data.status == 'live'
+          ) || (
+            resource.data.status == 'live' &&
+            request.resource.data.status == 'awarded' &&
+            request.resource.data.winningBidId != null
           )
         )
       );
@@ -80,7 +75,14 @@ service cloud.firestore {
     match /shipments/{shipmentId}/bids/{bidId} {
 
       // Read
-      allow read: if request.auth.uid != null; // Allow any authenticated user to read bids
+      allow read: if isEmployee(request.auth.uid) || (
+        request.auth.uid != null && (
+          (isExporter(request.auth.uid) &&
+            getShipment(shipmentId).data.exporterId == request.auth.uid) ||
+          (isCarrier(request.auth.uid) &&
+            getShipment(shipmentId).data.status == 'live')
+        )
+      );
 
       // Create
       allow create: if isEmployee(request.auth.uid) || (
@@ -95,7 +97,11 @@ service cloud.firestore {
     match /shipments/{shipmentId}/register/{carrierId} {
 
       // Read
-      allow read: if request.auth.uid == carrierId || isEmployee(request.auth.uid);
+      allow read: if isEmployee(request.auth.uid) || (
+        request.auth.uid != null &&
+        isCarrier(request.auth.uid) &&
+        request.auth.uid == carrierId
+      );
 
       // Create
       allow create: if isEmployee(request.auth.uid) || (
