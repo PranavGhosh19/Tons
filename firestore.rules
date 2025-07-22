@@ -1,4 +1,3 @@
-
 rules_version = '2';
 
 service cloud.firestore {
@@ -37,31 +36,30 @@ service cloud.firestore {
         request.resource.data.exporterId == request.auth.uid
       );
 
-      // Read (get and list)
-      allow read: if isEmployee(request.auth.uid) || (
-          request.auth.uid != null &&
-          (
-            (isExporter(request.auth.uid) && resource.data.exporterId == request.auth.uid) ||
-            (isCarrier(request.auth.uid) &&
-              ['draft', 'scheduled', 'live', 'awarded'].contains(resource.data.status))
-          )
+      // Read (Get, List)
+      allow read: if request.auth.uid != null && (
+        isEmployee(request.auth.uid) ||
+        (isExporter(request.auth.uid) && resource.data.exporterId == request.auth.uid) ||
+        (isCarrier(request.auth.uid) && ['draft', 'scheduled', 'live', 'awarded'].includes(resource.data.status))
       );
-
+      
       // Update
-      allow update: if isEmployee(request.auth.uid) || (
-        request.auth.uid != null &&
-        isExporter(request.auth.uid) &&
-        resource.data.exporterId == request.auth.uid &&
+      allow update: if request.auth.uid != null && (
+        isEmployee(request.auth.uid) ||
         (
+          isExporter(request.auth.uid) &&
+          resource.data.exporterId == request.auth.uid &&
           (
-            (resource.data.status == 'draft' || resource.data.status == 'scheduled') &&
-            request.resource.data.exporterId == resource.data.exporterId &&
-            request.resource.data.createdAt == resource.data.createdAt
-          ) ||
-          (
-            resource.data.status == 'live' &&
-            request.resource.data.status == 'awarded' &&
-            request.resource.data.winningBidId != null
+            ( // Allow edits in draft or scheduled state
+              (resource.data.status == 'draft' || resource.data.status == 'scheduled') &&
+              request.resource.data.exporterId == resource.data.exporterId && // Cannot change owner
+              request.resource.data.createdAt == resource.data.createdAt // Cannot change creation time
+            ) ||
+            ( // Allow awarding a bid
+              resource.data.status == 'live' &&
+              request.resource.data.status == 'awarded' &&
+              request.resource.data.winningBidId != null
+            )
           )
         )
       );
