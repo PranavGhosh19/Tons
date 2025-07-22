@@ -1,4 +1,3 @@
-
 rules_version = '2';
 
 service cloud.firestore {
@@ -24,48 +23,50 @@ service cloud.firestore {
     // ───── Users Collection ─────
     match /users/{userId} {
       allow read, update: if request.auth.uid == userId || isEmployee(request.auth.uid);
-      allow create: if request.auth.uid == userId && request.resource.data.email == request.auth.token.email;
+      allow create: if request.auth.uid == userId 
+                    && request.resource.data.email == request.auth.token.email;
     }
 
     // ───── Shipments Collection ─────
     match /shipments/{shipmentId} {
-      
-      // Exporters can create shipments for themselves
-      allow create: if request.auth.uid != null 
-                    && isExporter(request.auth.uid) 
-                    && request.resource.data.exporterId == request.auth.uid;
 
-      // Exporters and Employees can read; Carriers can read all shipments
+      // Exporters or Employees can create shipments
+      allow create: if request.auth.uid != null && (
+        isEmployee(request.auth.uid) ||
+        (isExporter(request.auth.uid) && request.resource.data.exporterId == request.auth.uid)
+      );
+
+      // Exporters (own), Carriers (all), Employees (all)
       allow read: if request.auth.uid != null && (
-                    isEmployee(request.auth.uid) ||
-                    (isExporter(request.auth.uid) && resource.data.exporterId == request.auth.uid) ||
-                    isCarrier(request.auth.uid)
-                  );
+        isEmployee(request.auth.uid) ||
+        (isExporter(request.auth.uid) && resource.data.exporterId == request.auth.uid) ||
+        isCarrier(request.auth.uid)
+      );
 
-      // Exporters and Employees can update
+      // Update shipment:
       allow update: if request.auth.uid != null && (
-        // Employee can always update
+        // Employees can always update
         isEmployee(request.auth.uid) ||
 
-        // Exporter with rules
+        // Exporters can update with constraints
         (
           isExporter(request.auth.uid) &&
           resource.data.exporterId == request.auth.uid &&
           (
-            // Edit during draft or scheduled (fields locked)
+            // Editing while draft or scheduled, without changing critical fields
             (
               (resource.data.status == 'draft' || resource.data.status == 'scheduled') &&
               request.resource.data.exporterId == resource.data.exporterId &&
               request.resource.data.createdAt == resource.data.createdAt
             ) ||
 
-            // Move from draft/scheduled → live
+            // Go Live from draft/scheduled
             (
               (resource.data.status == 'draft' || resource.data.status == 'scheduled') &&
               request.resource.data.status == 'live'
             ) ||
 
-            // Move from live → awarded with winningBidId
+            // Awarding shipment
             (
               resource.data.status == 'live' &&
               request.resource.data.status == 'awarded' &&
@@ -79,16 +80,15 @@ service cloud.firestore {
     // ───── Bids Subcollection ─────
     match /shipments/{shipmentId}/bids/{bidId} {
       allow read: if request.auth.uid != null && (
-        // Employees can read all
         isEmployee(request.auth.uid) ||
 
-        // Exporters can read bids on their shipments
+        // Exporters can read bids on their own shipments
         (isExporter(request.auth.uid) &&
-          getShipment(shipmentId).data.exporterId == request.auth.uid) ||
+         getShipment(shipmentId).data.exporterId == request.auth.uid) ||
 
-        // Carriers can read if shipment is live
+        // Carriers can read bids if shipment is live
         (isCarrier(request.auth.uid) &&
-          getShipment(shipmentId).data.status == 'live')
+         getShipment(shipmentId).data.status == 'live')
       );
 
       allow create: if request.auth.uid != null &&
@@ -113,10 +113,8 @@ service cloud.firestore {
     // ───── CollectionGroup Query on Register ─────
     match /{documentPath=**}/register/{docId} {
       allow read: if request.auth.uid != null
-                        && isCarrier(request.auth.uid)
-                        && resource.data.carrierId == request.auth.uid;
+                  && isCarrier(request.auth.uid)
+                  && resource.data.carrierId == request.auth.uid;
     }
   }
 }
-
-    
