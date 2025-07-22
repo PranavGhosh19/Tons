@@ -1,3 +1,4 @@
+
 rules_version = '2';
 
 service cloud.firestore {
@@ -36,16 +37,16 @@ service cloud.firestore {
         request.resource.data.exporterId == request.auth.uid
       );
 
-      // Read (Get & List)
-      allow list: if isEmployee(request.auth.uid);
-      allow get: if isEmployee(request.auth.uid) || (
-        request.auth.uid != null && (
-          (isExporter(request.auth.uid) && resource.data.exporterId == request.auth.uid) ||
-          (isCarrier(request.auth.uid) &&
-            ['draft', 'scheduled', 'live', 'awarded'].contains(resource.data.status))
-        )
+      // Read (get and list)
+      allow read: if isEmployee(request.auth.uid) || (
+          request.auth.uid != null &&
+          (
+            (isExporter(request.auth.uid) && resource.data.exporterId == request.auth.uid) ||
+            (isCarrier(request.auth.uid) &&
+              ['draft', 'scheduled', 'live', 'awarded'].contains(resource.data.status))
+          )
       );
-      
+
       // Update
       allow update: if isEmployee(request.auth.uid) || (
         request.auth.uid != null &&
@@ -56,10 +57,8 @@ service cloud.firestore {
             (resource.data.status == 'draft' || resource.data.status == 'scheduled') &&
             request.resource.data.exporterId == resource.data.exporterId &&
             request.resource.data.createdAt == resource.data.createdAt
-          ) || (
-            (resource.data.status == 'draft' || resource.data.status == 'scheduled') &&
-            request.resource.data.status == 'live'
-          ) || (
+          ) ||
+          (
             resource.data.status == 'live' &&
             request.resource.data.status == 'awarded' &&
             request.resource.data.winningBidId != null
