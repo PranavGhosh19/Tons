@@ -87,7 +87,7 @@ export default function ShipmentDetailPage() {
       const bidsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setBids(bidsData);
     }, (error) => {
-        console.error("Error fetching bids: ", error);
+        console.error("Error fetching bids in real-time: ", error);
         toast({ title: "Error", description: "Failed to fetch bids in real-time.", variant: "destructive" });
     });
 
@@ -172,6 +172,7 @@ export default function ShipmentDetailPage() {
 
   const canEdit = userType === 'exporter' && (shipment.status === 'draft' || shipment.status === 'scheduled');
   const canManage = userType === 'employee';
+  const canGoLive = canManage && (shipment.status === 'draft' || shipment.status === 'scheduled');
 
   return (
     <div className="container py-6 md:py-10">
@@ -293,6 +294,14 @@ export default function ShipmentDetailPage() {
                     <CardContent>
                         <p className="text-2xl font-bold font-headline text-accent-foreground capitalize">{statusInfo.text}</p>
                     </CardContent>
+                    {canGoLive && (
+                        <CardContent>
+                             <Button onClick={handleGoLive} disabled={isSubmitting} className="w-full">
+                                <Rocket className="mr-2 h-4 w-4" />
+                                {isSubmitting ? 'Sending Live...' : 'Go Live'}
+                            </Button>
+                        </CardContent>
+                    )}
                 </Card>
             </div>
         </div>
