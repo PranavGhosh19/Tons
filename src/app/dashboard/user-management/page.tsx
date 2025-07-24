@@ -99,7 +99,6 @@ export default function UserManagementPage() {
                 <TableHead>Name</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead className="text-center">User Type</TableHead>
-                <TableHead className="text-center">GST Verified</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -111,19 +110,6 @@ export default function UserManagementPage() {
                     <Badge variant={u.userType === 'carrier' ? 'secondary' : 'default'} className="capitalize">
                       {u.userType || 'N/A'}
                     </Badge>
-                  </TableCell>
-                  <TableCell className="text-center">
-                    {u.isGstVerified ? (
-                        <Badge variant="success" className="flex items-center justify-center gap-1">
-                            <CheckCircle className="h-3.5 w-3.5" />
-                            <span>Yes</span>
-                        </Badge>
-                    ) : (
-                         <Badge variant="destructive" className="flex items-center justify-center gap-1">
-                            <XCircle className="h-3.5 w-3.5" />
-                            <span>No</span>
-                        </Badge>
-                    )}
                   </TableCell>
                 </TableRow>
               ))}
