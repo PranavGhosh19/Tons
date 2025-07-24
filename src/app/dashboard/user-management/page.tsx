@@ -150,28 +150,27 @@ export default function UserManagementPage() {
       </div>
       <p className="text-muted-foreground mb-8">Oversee all exporter and carrier accounts on the platform.</p>
 
-      <div className="flex flex-col sm:flex-row gap-4 mb-6">
-        <div className="relative w-full sm:max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input 
-                placeholder="Search by name or email..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-            />
-        </div>
-        <Tabs value={currentTab} onValueChange={setCurrentTab} className="w-full sm:w-auto">
-            <TabsList>
-            <TabsTrigger value="all">All Users</TabsTrigger>
-            <TabsTrigger value="exporter">Exporters</TabsTrigger>
-            <TabsTrigger value="carrier">Carriers</TabsTrigger>
+      <Tabs value={currentTab} onValueChange={setCurrentTab} className="w-full">
+        <div className="flex flex-col sm:flex-row gap-4 mb-6">
+            <div className="relative w-full sm:max-w-sm">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input 
+                    placeholder="Search by name or email..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                />
+            </div>
+            <TabsList className="w-full sm:w-auto">
+                <TabsTrigger value="all">All Users</TabsTrigger>
+                <TabsTrigger value="exporter">Exporters</TabsTrigger>
+                <TabsTrigger value="carrier">Carriers</TabsTrigger>
             </TabsList>
-        </Tabs>
-      </div>
-      
-      <TabsContent value={currentTab} className="mt-0">
-        {renderUserTable(filteredUsers)}
-      </TabsContent>
+        </div>
+        <TabsContent value="all">{renderUserTable(filteredUsers)}</TabsContent>
+        <TabsContent value="exporter">{renderUserTable(filteredUsers)}</TabsContent>
+        <TabsContent value="carrier">{renderUserTable(filteredUsers)}</TabsContent>
+      </Tabs>
     </div>
   );
 }
