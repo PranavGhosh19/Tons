@@ -80,15 +80,12 @@ export default function EmployeeDashboardPage() {
             href="/dashboard/manage-shipments"
             icon={Truck}
         />
-         <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-lg font-medium">User Management</CardTitle>
-                <Users className="h-5 w-5 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-                <p className="text-sm text-muted-foreground">Oversee exporter and carrier accounts.</p>
-            </CardContent>
-        </Card>
+        <DashboardCard
+            title="User Management"
+            description="Oversee exporter and carrier accounts."
+            href="/dashboard/user-management"
+            icon={Users}
+        />
          <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-lg font-medium">Platform Analytics</CardTitle>

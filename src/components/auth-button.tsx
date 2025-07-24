@@ -16,7 +16,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { User as UserIcon, LogOut, Settings, LifeBuoy, Menu, Shield } from "lucide-react";
+import { User as UserIcon, LogOut, Settings, LifeBuoy, Menu, Shield, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { doc, getDoc } from "firebase/firestore";
 import { Skeleton } from "./ui/skeleton";
@@ -36,6 +36,7 @@ const carrierNavLinks = [
 const employeeNavLinks = [
     { href: "/dashboard/employee", label: "Dashboard" },
     { href: "/dashboard/manage-shipments", label: "Manage Shipments" },
+    { href: "/dashboard/user-management", label: "User Management" },
 ];
 
 export function NavLinks() {
@@ -81,7 +82,7 @@ export function NavLinks() {
     <nav className="hidden sm:flex items-center gap-4 text-sm font-medium">
       {links.map((link) => {
         let isActive = false;
-        if (link.href === "/dashboard/exporter" || link.href === "/dashboard/carrier" || link.href === "/dashboard/employee") {
+        if (link.href.endsWith("/dashboard") || link.href.endsWith("/exporter") || link.href.endsWith("/carrier") || link.href.endsWith("/employee")) {
           isActive = pathname === link.href;
         } else {
           isActive = pathname.startsWith(link.href);
@@ -197,7 +198,7 @@ export function MobileNavLinks() {
                 <div className="flex flex-col gap-3 py-4 text-lg font-medium">
                     {links.map((link) => {
                         let isActive = false;
-                        if (link.href === "/dashboard/carrier" || link.href === "/dashboard/exporter" || link.href === "/dashboard/employee") {
+                        if (link.href.endsWith("/dashboard") || link.href.endsWith("/exporter") || link.href.endsWith("/carrier") || link.href.endsWith("/employee")) {
                             isActive = pathname === link.href;
                         } else {
                             isActive = pathname.startsWith(link.href);
@@ -220,12 +221,20 @@ export function MobileNavLinks() {
                 <div className="mt-auto flex flex-col gap-3 text-lg font-medium">
                     <Separator />
                      {userType === 'employee' && (
-                        <button
-                            onClick={() => handleLinkClick('/dashboard/employee')}
-                            className="transition-colors hover:text-primary text-left text-muted-foreground flex items-center"
-                        >
-                            <Shield className="mr-2 h-5 w-5" /> Admin Panel
-                        </button>
+                        <>
+                            <button
+                                onClick={() => handleLinkClick('/dashboard/manage-shipments')}
+                                className="transition-colors hover:text-primary text-left text-muted-foreground flex items-center"
+                            >
+                                <Shield className="mr-2 h-5 w-5" /> Manage Shipments
+                            </button>
+                             <button
+                                onClick={() => handleLinkClick('/dashboard/user-management')}
+                                className="transition-colors hover:text-primary text-left text-muted-foreground flex items-center"
+                            >
+                                <Users className="mr-2 h-5 w-5" /> User Management
+                            </button>
+                        </>
                     )}
                     <button
                         onClick={() => handleLinkClick('/settings')}
@@ -305,10 +314,16 @@ export function AuthButton() {
             <DropdownMenuLabel>My Account</DropdownMenuLabel>
             <DropdownMenuSeparator />
              {userType === 'employee' && (
-                <DropdownMenuItem onClick={() => router.push('/dashboard/manage-shipments')}>
-                    <Shield className="mr-2 h-4 w-4" />
-                    <span>Admin Panel</span>
-                </DropdownMenuItem>
+                <>
+                    <DropdownMenuItem onClick={() => router.push('/dashboard/manage-shipments')}>
+                        <Shield className="mr-2 h-4 w-4" />
+                        <span>Manage Shipments</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => router.push('/dashboard/user-management')}>
+                        <Users className="mr-2 h-4 w-4" />
+                        <span>User Management</span>
+                    </DropdownMenuItem>
+                </>
             )}
             <DropdownMenuItem onClick={() => router.push('/settings')}>
                 <Settings className="mr-2 h-4 w-4" />
