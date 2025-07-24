@@ -104,7 +104,7 @@ export default function UserManagementPage() {
             </TableHeader>
             <TableBody>
               {userData.map((u) => (
-                <TableRow key={u.id}>
+                <TableRow key={u.id} onClick={() => router.push(`/dashboard/user/${u.id}`)} className="cursor-pointer">
                   <TableCell className="font-medium">{u.name || 'N/A'}</TableCell>
                   <TableCell>{u.email || 'N/A'}</TableCell>
                   <TableCell className="text-center">
