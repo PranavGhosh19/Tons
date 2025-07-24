@@ -12,7 +12,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CheckCircle, XCircle } from "lucide-react";
+import { CheckCircle, XCircle, Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
 
 type User = DocumentData & { id: string };
 
@@ -21,6 +22,7 @@ export default function UserManagementPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentTab, setCurrentTab] = useState("all");
+  const [searchTerm, setSearchTerm] = useState("");
   
   const router = useRouter();
   const { toast } = useToast();
@@ -64,16 +66,28 @@ export default function UserManagementPage() {
   }, [user, toast]);
 
   const filteredUsers = useMemo(() => {
-    if (currentTab === 'all') return users;
-    return users.filter(user => user.userType === currentTab);
-  }, [users, currentTab]);
+    let filtered = users;
+
+    if (currentTab !== 'all') {
+      filtered = filtered.filter(user => user.userType === currentTab);
+    }
+
+    if (searchTerm) {
+      filtered = filtered.filter(user => 
+        (user.name && user.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (user.email && user.email.toLowerCase().includes(searchTerm.toLowerCase()))
+      );
+    }
+    
+    return filtered;
+  }, [users, currentTab, searchTerm]);
 
   const renderUserTable = (userData: User[]) => {
     if (userData.length === 0) {
       return (
         <div className="border rounded-lg p-12 text-center bg-card dark:bg-card">
-          <h2 className="text-xl font-semibold mb-2">No users in this category</h2>
-          <p className="text-muted-foreground">There are currently no users matching this filter.</p>
+          <h2 className="text-xl font-semibold mb-2">No users found</h2>
+          <p className="text-muted-foreground">Try adjusting your search or filter.</p>
         </div>
       );
     }
@@ -136,16 +150,28 @@ export default function UserManagementPage() {
       </div>
       <p className="text-muted-foreground mb-8">Oversee all exporter and carrier accounts on the platform.</p>
 
-      <Tabs value={currentTab} onValueChange={setCurrentTab}>
-        <TabsList className="mb-6">
-          <TabsTrigger value="all">All Users</TabsTrigger>
-          <TabsTrigger value="exporter">Exporters</TabsTrigger>
-          <TabsTrigger value="carrier">Carriers</TabsTrigger>
-        </TabsList>
-        <TabsContent value="all">{renderUserTable(filteredUsers)}</TabsContent>
-        <TabsContent value="exporter">{renderUserTable(filteredUsers)}</TabsContent>
-        <TabsContent value="carrier">{renderUserTable(filteredUsers)}</TabsContent>
-      </Tabs>
+      <div className="flex flex-col sm:flex-row gap-4 mb-6">
+        <div className="relative w-full sm:max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input 
+                placeholder="Search by name or email..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+            />
+        </div>
+        <Tabs value={currentTab} onValueChange={setCurrentTab} className="w-full sm:w-auto">
+            <TabsList>
+            <TabsTrigger value="all">All Users</TabsTrigger>
+            <TabsTrigger value="exporter">Exporters</TabsTrigger>
+            <TabsTrigger value="carrier">Carriers</TabsTrigger>
+            </TabsList>
+        </Tabs>
+      </div>
+      
+      <TabsContent value={currentTab} className="mt-0">
+        {renderUserTable(filteredUsers)}
+      </TabsContent>
     </div>
   );
 }
