@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from 'next/navigation';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { collection, query, DocumentData, orderBy, doc, getDoc, onSnapshot } from 'firebase/firestore';
@@ -13,11 +13,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { Input } from "@/components/ui/input";
+import { Search } from "lucide-react";
 
 export default function ManageShipmentsPage() {
   const [user, setUser] = useState<User | null>(null);
   const [shipments, setShipments] = useState<DocumentData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
   
   const router = useRouter();
   const { toast } = useToast();
@@ -58,6 +61,17 @@ export default function ManageShipmentsPage() {
 
     return () => unsubscribe();
   }, [user, toast]);
+  
+  const filteredShipments = useMemo(() => {
+    if (!searchTerm) {
+        return shipments;
+    }
+    return shipments.filter(shipment => 
+        (shipment.productName && shipment.productName.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (shipment.exporterName && shipment.exporterName.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+  }, [shipments, searchTerm]);
+
 
   const getStatusVariant = (status: string) => {
     switch (status) {
@@ -90,11 +104,20 @@ export default function ManageShipmentsPage() {
 
   return (
     <div className="container py-6 md:py-10">
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex flex-col sm:flex-row justify-between items-center mb-8 gap-4">
         <h1 className="text-2xl sm:text-3xl font-bold font-headline">Manage All Shipments</h1>
+        <div className="relative w-full sm:max-w-xs">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input 
+                placeholder="Search by product, exporter..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+            />
+        </div>
       </div>
 
-      {shipments.length > 0 ? (
+      {filteredShipments.length > 0 ? (
         <div className="border rounded-lg overflow-x-auto">
           <Table>
             <TableHeader>
@@ -107,7 +130,7 @@ export default function ManageShipmentsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {shipments.map((shipment) => (
+              {filteredShipments.map((shipment) => (
                 <TableRow key={shipment.id} onClick={() => handleRowClick(shipment.id)} className="cursor-pointer">
                   <TableCell className="font-medium">{shipment.productName || 'N/A'}</TableCell>
                   <TableCell>{shipment.exporterName || 'N/A'}</TableCell>
@@ -126,7 +149,7 @@ export default function ManageShipmentsPage() {
       ) : (
         <div className="border rounded-lg p-12 text-center bg-card dark:bg-card">
           <h2 className="text-xl font-semibold mb-2">No shipments found</h2>
-          <p className="text-muted-foreground">There are currently no shipments on the platform.</p>
+          <p className="text-muted-foreground">There are currently no shipments on the platform matching your search.</p>
         </div>
       )}
     </div>
