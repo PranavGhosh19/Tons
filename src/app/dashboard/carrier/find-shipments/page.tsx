@@ -35,7 +35,7 @@ export default function FindShipmentsPage() {
   const { toast } = useToast();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+    const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
         const userDocRef = doc(db, 'users', currentUser.uid);
         const userDoc = await getDoc(userDocRef);
@@ -49,7 +49,7 @@ export default function FindShipmentsPage() {
         router.push('/login');
       }
     });
-    return () => unsubscribe();
+    return () => unsubscribeAuth();
   }, [router]);
   
   const fetchRegisteredShipments = useCallback(async (currentUser: User) => {
@@ -69,11 +69,12 @@ export default function FindShipmentsPage() {
 
 
   useEffect(() => {
+    let unsubscribeSnapshots: () => void = () => {};
     if (user) {
         setLoading(true);
         const shipmentsQuery = query(collection(db, 'shipments'), orderBy('createdAt', 'desc'));
 
-        const unsubscribe = onSnapshot(shipmentsQuery, (snapshot) => {
+        unsubscribeSnapshots = onSnapshot(shipmentsQuery, (snapshot) => {
             const shipmentsList = snapshot.docs
                 .map(doc => ({ id: doc.id, ...doc.data() }))
                 .filter(shipment => shipment.status !== 'live');
@@ -85,9 +86,10 @@ export default function FindShipmentsPage() {
             toast({ title: "Error", description: "Could not fetch shipments.", variant: "destructive" });
             setLoading(false);
         });
-
-        return () => unsubscribe();
     }
+     return () => {
+        unsubscribeSnapshots();
+    };
   }, [user, toast]);
 
 
@@ -328,3 +330,5 @@ export default function FindShipmentsPage() {
     </div>
   );
 }
+
+    
