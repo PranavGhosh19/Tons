@@ -11,7 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Check, Rocket, Pencil, Clock, Shield } from "lucide-react";
+import { ArrowLeft, Check, Rocket, Pencil, Clock, Shield, Users } from "lucide-react";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -21,6 +21,7 @@ export default function ShipmentDetailPage() {
   const [userType, setUserType] = useState<string | null>(null);
   const [shipment, setShipment] = useState<DocumentData | null>(null);
   const [bids, setBids] = useState<DocumentData[]>([]);
+  const [registeredCount, setRegisteredCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -94,6 +95,20 @@ export default function ShipmentDetailPage() {
 
     return () => unsubscribeBids();
   }, [shipmentId, shipment?.status, toast]);
+  
+  useEffect(() => {
+    if (!shipmentId) return;
+
+    const registerQuery = query(collection(db, "shipments", shipmentId, "register"));
+    const unsubscribeRegister = onSnapshot(registerQuery, (querySnapshot) => {
+      setRegisteredCount(querySnapshot.size);
+    }, (error) => {
+        console.error("Error fetching registration count: ", error);
+    });
+
+    return () => unsubscribeRegister();
+  }, [shipmentId]);
+
 
   const handleGoLive = async () => {
     if (!shipmentId) return;
@@ -314,8 +329,27 @@ export default function ShipmentDetailPage() {
                         </CardContent>
                     )}
                 </Card>
+
+                {(shipment.status === 'draft' || shipment.status === 'scheduled') && (
+                    <Card className="bg-white dark:bg-card">
+                        <CardHeader>
+                            <CardTitle>Interest</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                           <div className="flex items-center gap-4">
+                                <Users className="h-8 w-8 text-primary" />
+                                <div>
+                                    <p className="text-2xl font-bold">{registeredCount}</p>
+                                    <p className="text-sm text-muted-foreground">Carriers Registered</p>
+                                </div>
+                           </div>
+                        </CardContent>
+                    </Card>
+                )}
             </div>
         </div>
     </div>
   );
 }
+
+    
