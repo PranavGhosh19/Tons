@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useRouter } from 'next/navigation';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { collection, query, DocumentData, orderBy, doc, getDoc, onSnapshot } from 'firebase/firestore';
@@ -35,7 +35,7 @@ export default function ManageShipmentsPage() {
   const { toast } = useToast();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+    const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
         const userDocRef = doc(db, 'users', currentUser.uid);
         const userDoc = await getDoc(userDocRef);
@@ -48,27 +48,33 @@ export default function ManageShipmentsPage() {
         router.push('/login');
       }
     });
-    return () => unsubscribe();
+    return () => unsubscribeAuth();
   }, [router]);
   
   useEffect(() => {
-    if (!user) return;
+    let unsubscribeSnapshots: () => void = () => {};
 
-    setLoading(true);
-    const shipmentsCollectionRef = collection(db, 'shipments');
-    const q = query(shipmentsCollectionRef, orderBy('createdAt', 'desc'));
+    if (user) {
+        setLoading(true);
+        const shipmentsCollectionRef = collection(db, 'shipments');
+        const q = query(shipmentsCollectionRef, orderBy('createdAt', 'desc'));
 
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
-      const shipmentsList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setShipments(shipmentsList);
-      setLoading(false);
-    }, (error) => {
-      console.error("Error fetching shipments in real-time: ", error);
-      toast({ title: "Error", description: "Could not fetch shipments.", variant: "destructive" });
-      setLoading(false);
-    });
+        unsubscribeSnapshots = onSnapshot(q, (querySnapshot) => {
+            const shipmentsList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            setShipments(shipmentsList);
+            setLoading(false);
+        }, (error) => {
+            console.error("Error fetching shipments in real-time: ", error);
+            if (error.code !== 'permission-denied') {
+              toast({ title: "Error", description: "Could not fetch shipments.", variant: "destructive" });
+            }
+            setLoading(false);
+        });
+    }
 
-    return () => unsubscribe();
+    return () => {
+        unsubscribeSnapshots();
+    };
   }, [user, toast]);
   
   const filteredShipments = useMemo(() => {
@@ -234,5 +240,7 @@ export default function ManageShipmentsPage() {
     </div>
   );
 }
+
+    
 
     
