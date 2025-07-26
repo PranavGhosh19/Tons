@@ -30,15 +30,12 @@ service cloud.firestore {
     // ───── Shipments Collection ─────
     match /shipments/{shipmentId} {
 
-      // Exporters can create shipments for themselves
       allow create: if request.auth.uid != null
                     && isExporter(request.auth.uid)
                     && request.resource.data.exporterId == request.auth.uid;
-      
-      // Allow any authenticated user to list shipments, needed for carrier/employee dashboards
+
       allow list: if request.auth.uid != null;
       
-      // Exporters (own), Carriers (all), Employees (all) can get individual shipments
       allow get: if request.auth.uid != null && (
         isEmployee(request.auth.uid) ||
         (isExporter(request.auth.uid) && resource.data.exporterId == request.auth.uid) ||
@@ -61,12 +58,6 @@ service cloud.firestore {
               request.resource.data.exporterId == resource.data.exporterId &&
               request.resource.data.createdAt == resource.data.createdAt
             ) ||
-
-            // Go Live from draft/scheduled - this is now an admin action
-            // (
-            //   (resource.data.status == 'draft' || resource.data.status == 'scheduled') &&
-            //   request.resource.data.status == 'live'
-            // ) ||
 
             // Awarding shipment
             (
@@ -103,6 +94,7 @@ service cloud.firestore {
     match /shipments/{shipmentId}/register/{carrierId} {
       allow read: if request.auth.uid != null && (
         isEmployee(request.auth.uid) ||
+        (isExporter(request.auth.uid) && getShipment(shipmentId).data.exporterId == request.auth.uid) ||
         (isCarrier(request.auth.uid) && request.auth.uid == carrierId)
       );
 
