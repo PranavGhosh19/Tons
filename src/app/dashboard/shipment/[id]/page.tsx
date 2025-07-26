@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, Check, Rocket, Pencil, Clock, Shield } from "lucide-react";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
 export default function ShipmentDetailPage() {
   const [user, setUser] = useState<User | null>(null);
@@ -260,7 +261,14 @@ export default function ShipmentDetailPage() {
                                                     {shipment.status === 'awarded' ? (
                                                         shipment.winningBidId === bid.id && <Badge variant="success">Awarded</Badge>
                                                     ) : (
-                                                        <Button size="sm" onClick={() => handleAcceptBid(bid)} disabled={isSubmitting || userType !== 'exporter'}>
+                                                        <Button 
+                                                            size="sm" 
+                                                            onClick={() => handleAcceptBid(bid)} 
+                                                            disabled={isSubmitting}
+                                                            className={cn({
+                                                              'hover:bg-green-600 hover:text-white': canManage
+                                                            })}
+                                                        >
                                                             Accept Bid
                                                         </Button>
                                                     )}
