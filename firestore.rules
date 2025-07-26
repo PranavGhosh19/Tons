@@ -34,9 +34,12 @@ service cloud.firestore {
       allow create: if request.auth.uid != null
                     && isExporter(request.auth.uid)
                     && request.resource.data.exporterId == request.auth.uid;
-
-      // Exporters (own), Carriers (all), Employees (all)
-      allow read: if request.auth.uid != null && (
+      
+      // Allow any authenticated user to list shipments, needed for carrier/employee dashboards
+      allow list: if request.auth.uid != null;
+      
+      // Exporters (own), Carriers (all), Employees (all) can get individual shipments
+      allow get: if request.auth.uid != null && (
         isEmployee(request.auth.uid) ||
         (isExporter(request.auth.uid) && resource.data.exporterId == request.auth.uid) ||
         isCarrier(request.auth.uid)
@@ -59,11 +62,11 @@ service cloud.firestore {
               request.resource.data.createdAt == resource.data.createdAt
             ) ||
 
-            // Go Live from draft/scheduled
-            (
-              (resource.data.status == 'draft' || resource.data.status == 'scheduled') &&
-              request.resource.data.status == 'live'
-            ) ||
+            // Go Live from draft/scheduled - this is now an admin action
+            // (
+            //   (resource.data.status == 'draft' || resource.data.status == 'scheduled') &&
+            //   request.resource.data.status == 'live'
+            // ) ||
 
             // Awarding shipment
             (
@@ -111,6 +114,13 @@ service cloud.firestore {
 
     // ───── CollectionGroup Query on Register ─────
     match /{documentPath=**}/register/{docId} {
+      allow read: if request.auth.uid != null
+                  && isCarrier(request.auth.uid)
+                  && resource.data.carrierId == request.auth.uid;
+    }
+
+    // ───── CollectionGroup Query on Bids ─────
+    match /{documentPath=**}/bids/{bidId} {
       allow read: if request.auth.uid != null
                   && isCarrier(request.auth.uid)
                   && resource.data.carrierId == request.auth.uid;
