@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowRight, Search, FileText } from "lucide-react";
+import { ArrowRight, Search, FileText, DollarSign } from "lucide-react";
 import Link from "next/link";
 import { RecentActivities } from "@/components/RecentActivities";
 
@@ -95,14 +95,14 @@ export default function CarrierDashboardPage() {
         <DashboardCard 
             title="My Bids"
             description="Track the status of your active bids."
-            href="#"
+            href="/dashboard/carrier/my-bids"
             icon={FileText}
         />
         <DashboardCard 
             title="Earnings"
             description="View your completed jobs and earnings."
             href="#"
-            icon={FileText}
+            icon={DollarSign}
         />
       </div>
 

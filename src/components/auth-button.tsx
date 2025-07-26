@@ -16,7 +16,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { User as UserIcon, LogOut, Settings, LifeBuoy, Menu, Shield, Users } from "lucide-react";
+import { User as UserIcon, LogOut, Settings, LifeBuoy, Menu, Shield, Users, FileText, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { doc, getDoc } from "firebase/firestore";
 import { Skeleton } from "./ui/skeleton";
@@ -31,6 +31,7 @@ const exporterNavLinks = [
 const carrierNavLinks = [
     { href: "/dashboard/carrier", label: "Dashboard" },
     { href: "/dashboard/carrier/find-shipments", label: "Find Shipments" },
+    { href: "/dashboard/carrier/my-bids", label: "My Bids" },
 ];
 
 const employeeNavLinks = [
