@@ -2,7 +2,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { getAuth } from 'firebase/auth';
-import { collectionGroup, getDocs, query, where, getFirestore, doc, getDoc, orderBy, Timestamp } from 'firebase/firestore';
+import { collectionGroup, getDocs, query, where, getFirestore, doc, getDoc, orderBy, Timestamp, onSnapshot } from 'firebase/firestore';
 import { app } from '@/lib/firebase'; 
 import { Info, Loader2, Send } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -10,6 +10,7 @@ import { Badge } from './ui/badge';
 import { format } from 'date-fns';
 import { useRouter } from 'next/navigation';
 import type { User } from 'firebase/auth';
+import { cn } from '@/lib/utils';
 
 const db = getFirestore(app);
 
@@ -48,66 +49,65 @@ export function RecentActivities() {
   const router = useRouter();
 
   useEffect(() => {
-    const unsubscribe = getAuth().onAuthStateChanged(user => {
+    const unsubscribeAuth = getAuth().onAuthStateChanged(user => {
       if (user) {
         setUser(user);
       } else {
         setLoading(false);
       }
     });
-
-    return () => unsubscribe();
+    return () => unsubscribeAuth();
   }, []);
   
   useEffect(() => {
     if (!user) return;
 
-    const fetchRegisteredShipments = async () => {
-      try {
-        const registerQuery = query(
-          collectionGroup(db, 'register'),
-          where('carrierId', '==', user.uid)
-        );
-
-        const registerSnap = await getDocs(registerQuery);
-        const shipmentIds = new Set<string>();
-        registerSnap.forEach((doc) => {
-          const parentPath = doc.ref.parent.parent?.id;
-          if (parentPath) shipmentIds.add(parentPath);
-        });
-
-        if (shipmentIds.size === 0) {
-            setShipments([]);
-            setLoading(false);
-            return;
-        }
-
-        const shipmentPromises = Array.from(shipmentIds).map(async (shipmentId) => {
-          const shipmentRef = doc(db, 'shipments', shipmentId);
-          const shipmentSnap = await getDoc(shipmentRef);
-          if (shipmentSnap.exists()) {
-            return { id: shipmentSnap.id, ...shipmentSnap.data() } as Shipment;
-          }
-          return null;
-        });
-
-        const shipmentsData = (await Promise.all(shipmentPromises)).filter(Boolean) as Shipment[];
-        
-        shipmentsData.sort((a, b) => {
-            const timeA = a.goLiveAt?.toDate()?.getTime() || 0;
-            const timeB = b.goLiveAt?.toDate()?.getTime() || 0;
-            return timeB - timeA;
-        });
-
-        setShipments(shipmentsData);
-      } catch (err) {
-        console.error('Error fetching shipments:', err);
-      } finally {
-        setLoading(false);
-      }
+    const fetchRegisteredShipmentIds = async (callback: (ids: string[]) => void) => {
+      const registerQuery = query(
+        collectionGroup(db, 'register'),
+        where('carrierId', '==', user.uid)
+      );
+      const registerSnap = await getDocs(registerQuery);
+      const shipmentIds = registerSnap.docs.map(doc => doc.ref.parent.parent!.id);
+      callback(shipmentIds);
     };
 
-    fetchRegisteredShipments();
+    fetchRegisteredShipmentIds(shipmentIds => {
+      if (shipmentIds.length === 0) {
+        setShipments([]);
+        setLoading(false);
+        return;
+      }
+      
+      const unsubscribers = shipmentIds.map(id => {
+        const shipmentRef = doc(db, 'shipments', id);
+        return onSnapshot(shipmentRef, (docSnap) => {
+          if (docSnap.exists()) {
+            const newShipment = { id: docSnap.id, ...docSnap.data() } as Shipment;
+            setShipments(prevShipments => {
+              const existingIndex = prevShipments.findIndex(s => s.id === newShipment.id);
+              let newShipmentsList;
+              if (existingIndex > -1) {
+                newShipmentsList = [...prevShipments];
+                newShipmentsList[existingIndex] = newShipment;
+              } else {
+                newShipmentsList = [...prevShipments, newShipment];
+              }
+              // Sort after update
+              return newShipmentsList.sort((a, b) => {
+                const timeA = a.goLiveAt?.toDate()?.getTime() || 0;
+                const timeB = b.goLiveAt?.toDate()?.getTime() || 0;
+                return timeB - timeA;
+              });
+            });
+          }
+        });
+      });
+
+      setLoading(false);
+
+      return () => unsubscribers.forEach(unsub => unsub());
+    });
 
   }, [user]);
 
@@ -118,6 +118,18 @@ export function RecentActivities() {
       router.push(`/dashboard/carrier/registered-shipment/${shipment.id}`);
     }
   };
+
+  const getStatusVariant = (status: string) => {
+    switch (status) {
+      case 'live':
+        return 'success';
+      case 'registered':
+      case 'scheduled':
+        return 'secondary';
+      default:
+        return 'outline';
+    }
+  }
 
   if (loading) {
     return (
@@ -150,23 +162,29 @@ export function RecentActivities() {
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {shipments.map((shipment) => (
-                        <TableRow key={shipment.id} className="cursor-pointer" onClick={() => handleRowClick(shipment)}>
-                            <TableCell className="font-medium">{shipment.productName || 'N/A'}</TableCell>
-                            <TableCell className="hidden md:table-cell">{shipment.destination?.portOfDelivery || 'N/A'}</TableCell>
-                            <TableCell className="hidden lg:table-cell">{shipment.deliveryDeadline ? format(shipment.deliveryDeadline.toDate(), "PP") : 'N/A'}</TableCell>
-                             <TableCell className="text-center">
-                                <Badge variant="secondary">Registered</Badge>
-                            </TableCell>
-                            <TableCell className="text-right">
-                                {shipment.goLiveAt ? (
-                                    <span>{format(shipment.goLiveAt.toDate(), "PPp")}</span>
-                                ) : (
-                                    <Badge variant="secondary">Not Scheduled</Badge>
-                                )}
-                            </TableCell>
-                        </TableRow>
-                    ))}
+                    {shipments.map((shipment) => {
+                        const statusText = shipment.status === 'live' ? 'Live' : 'Registered';
+                        
+                        return (
+                            <TableRow key={shipment.id} className="cursor-pointer" onClick={() => handleRowClick(shipment)}>
+                                <TableCell className="font-medium">{shipment.productName || 'N/A'}</TableCell>
+                                <TableCell className="hidden md:table-cell">{shipment.destination?.portOfDelivery || 'N/A'}</TableCell>
+                                <TableCell className="hidden lg:table-cell">{shipment.deliveryDeadline ? format(shipment.deliveryDeadline.toDate(), "PP") : 'N/A'}</TableCell>
+                                 <TableCell className="text-center">
+                                    <Badge variant={getStatusVariant(shipment.status)} className={cn("capitalize", { "animate-blink bg-green-500/80": shipment.status === 'live' })}>
+                                        {statusText}
+                                    </Badge>
+                                </TableCell>
+                                <TableCell className="text-right">
+                                    {shipment.goLiveAt ? (
+                                        <span>{format(shipment.goLiveAt.toDate(), "PPp")}</span>
+                                    ) : (
+                                        <Badge variant="secondary">Not Scheduled</Badge>
+                                    )}
+                                </TableCell>
+                            </TableRow>
+                        )
+                    })}
                 </TableBody>
             </Table>
         </div>

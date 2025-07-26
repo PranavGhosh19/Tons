@@ -71,39 +71,24 @@ export default function FindShipmentsPage() {
   useEffect(() => {
     if (user) {
         setLoading(true);
-        
-        let initialRegisteredIds: Set<string>;
+        const shipmentsQuery = query(collection(db, 'shipments'), orderBy('createdAt', 'desc'));
 
-        const setupListeners = async () => {
-            initialRegisteredIds = await fetchRegisteredShipments(user);
+        const unsubscribe = onSnapshot(shipmentsQuery, (snapshot) => {
+            const shipmentsList = snapshot.docs
+                .map(doc => ({ id: doc.id, ...doc.data() }))
+                .filter(shipment => shipment.status !== 'live');
 
-            const shipmentsQuery = query(collection(db, 'shipments'), orderBy('createdAt', 'desc'));
-            
-            const unsubscribe = onSnapshot(shipmentsQuery, (snapshot) => {
-                const shipmentsList = snapshot.docs
-                    .map(doc => ({ id: doc.id, ...doc.data() }))
-                    .filter(shipment => 
-                        shipment.status !== 'live' && !initialRegisteredIds.has(shipment.id)
-                    );
+            setShipments(shipmentsList);
+            setLoading(false);
+        }, (error) => {
+            console.error("Error fetching shipments in real-time: ", error);
+            toast({ title: "Error", description: "Could not fetch shipments.", variant: "destructive" });
+            setLoading(false);
+        });
 
-                setShipments(shipmentsList);
-                setLoading(false);
-            }, (error) => {
-                console.error("Error fetching real-time shipments: ", error);
-                toast({ title: "Error", description: "Could not fetch shipments.", variant: "destructive" });
-                setLoading(false);
-            });
-            
-            return unsubscribe;
-        };
-        
-        const unsubscribePromise = setupListeners();
-
-        return () => {
-            unsubscribePromise.then(unsubscribe => unsubscribe && unsubscribe());
-        };
+        return () => unsubscribe();
     }
-  }, [user, toast, fetchRegisteredShipments]);
+  }, [user, toast]);
 
 
   const handleOpenBidDialog = (shipment: DocumentData) => {
@@ -182,8 +167,8 @@ export default function FindShipmentsPage() {
   };
 
   const onRegisterSuccess = (shipmentId: string) => {
-    setRegisteredShipmentIds(prev => new Set(prev).add(shipmentId));
-    setShipments(prev => prev.filter(s => s.id !== shipmentId));
+    // We can choose to refetch or manually update state here.
+    // For simplicity, closing the dialog is enough as the main list will eventually reflect changes.
     setIsBidDialogOpen(false);
   }
 
