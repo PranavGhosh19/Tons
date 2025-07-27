@@ -120,15 +120,16 @@ export function RecentActivities() {
     }
   };
 
-  const getStatusVariant = (status: string) => {
-    switch (status) {
-      case 'live':
-        return 'success';
-      case 'registered':
-      case 'scheduled':
-        return 'secondary';
-      default:
-        return 'outline';
+  const getStatusInfo = (shipment: Shipment): { text: string; variant: "success" | "secondary" | "outline" } => {
+    switch (shipment.status) {
+        case 'live':
+            return { text: 'Live', variant: 'success' };
+        case 'awarded':
+            return { text: 'Awarded', variant: 'success' };
+        case 'scheduled':
+            return { text: 'Registered', variant: 'secondary' };
+        default:
+            return { text: 'Registered', variant: 'outline' };
     }
   }
 
@@ -164,7 +165,7 @@ export function RecentActivities() {
                 </TableHeader>
                 <TableBody>
                     {shipments.map((shipment) => {
-                        const statusText = shipment.status === 'live' ? 'Live' : 'Registered';
+                        const statusInfo = getStatusInfo(shipment);
                         
                         return (
                             <TableRow key={shipment.id} className="cursor-pointer" onClick={() => handleRowClick(shipment)}>
@@ -172,8 +173,8 @@ export function RecentActivities() {
                                 <TableCell className="hidden md:table-cell">{shipment.destination?.portOfDelivery || 'N/A'}</TableCell>
                                 <TableCell className="hidden lg:table-cell">{shipment.deliveryDeadline ? format(shipment.deliveryDeadline.toDate(), "PP") : 'N/A'}</TableCell>
                                  <TableCell className="text-center">
-                                    <Badge variant={getStatusVariant(shipment.status)} className={cn("capitalize", { "animate-blink bg-green-500/80": shipment.status === 'live' })}>
-                                        {statusText}
+                                    <Badge variant={statusInfo.variant} className={cn("capitalize", { "animate-blink bg-green-500/80": shipment.status === 'live' })}>
+                                        {statusInfo.text}
                                     </Badge>
                                 </TableCell>
                                 <TableCell className="text-right">
