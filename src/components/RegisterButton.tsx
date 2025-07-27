@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useEffect, useState } from 'react';
@@ -20,6 +19,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import { Checkbox } from './ui/checkbox';
+import { Label } from './ui/label';
 
 declare global {
     interface Window {
@@ -38,6 +39,7 @@ export const RegisterButton: React.FC<RegisterButtonProps> = ({ shipmentId, user
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -180,8 +182,16 @@ export const RegisterButton: React.FC<RegisterButtonProps> = ({ shipmentId, user
         toast({ title: "Error", description: error.message || "Failed to initiate payment.", variant: "destructive" });
     } finally {
         setIsSubmitting(false);
+        setTermsAccepted(false); // Reset checkbox
     }
   };
+
+  const handleOpenChange = (open: boolean) => {
+    setIsConfirmOpen(open);
+    if (!open) {
+        setTermsAccepted(false); // Reset on close
+    }
+  }
 
   if (loading) return <Skeleton className="h-10 w-44" />;
 
@@ -196,7 +206,7 @@ export const RegisterButton: React.FC<RegisterButtonProps> = ({ shipmentId, user
 
   return (
     <>
-        <AlertDialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
+        <AlertDialog open={isConfirmOpen} onOpenChange={handleOpenChange}>
             <AlertDialogTrigger asChild>
                 <Button disabled={isSubmitting}>
                     {isSubmitting ? 'Processing...' : 'I want to Bid (₹550)'}
@@ -221,9 +231,15 @@ export const RegisterButton: React.FC<RegisterButtonProps> = ({ shipmentId, user
                         </div>
                     </AlertDialogDescription>
                 </AlertDialogHeader>
+                <div className="flex items-center space-x-2 my-4">
+                    <Checkbox id="terms" checked={termsAccepted} onCheckedChange={(checked) => setTermsAccepted(!!checked)} />
+                    <Label htmlFor="terms" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                        Terms &amp; Conditions Accepted
+                    </Label>
+                </div>
                 <AlertDialogFooter>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={handlePayment}>Proceed to Payment</AlertDialogAction>
+                    <AlertDialogAction onClick={handlePayment} disabled={!termsAccepted}>Proceed to Payment</AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>
