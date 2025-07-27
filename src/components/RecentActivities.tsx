@@ -61,53 +61,54 @@ export function RecentActivities() {
   
   useEffect(() => {
     if (!user) return;
+    
+    let unsubscribers: (() => void)[] = [];
 
-    const fetchRegisteredShipmentIds = async (callback: (ids: string[]) => void) => {
-      const registerQuery = query(
-        collectionGroup(db, 'register'),
-        where('carrierId', '==', user.uid)
-      );
-      const registerSnap = await getDocs(registerQuery);
-      const shipmentIds = registerSnap.docs.map(doc => doc.ref.parent.parent!.id);
-      callback(shipmentIds);
+    const fetchAndListen = async () => {
+        const registerQuery = query(
+            collectionGroup(db, 'register'),
+            where('carrierId', '==', user.uid)
+        );
+        const registerSnap = await getDocs(registerQuery);
+        const shipmentIds = registerSnap.docs.map(doc => doc.ref.parent.parent!.id);
+
+        if (shipmentIds.length === 0) {
+            setShipments([]);
+            setLoading(false);
+            return;
+        }
+
+        unsubscribers = shipmentIds.map(id => {
+            const shipmentRef = doc(db, 'shipments', id);
+            return onSnapshot(shipmentRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    const newShipment = { id: docSnap.id, ...docSnap.data() } as Shipment;
+                    setShipments(prevShipments => {
+                        const existingIndex = prevShipments.findIndex(s => s.id === newShipment.id);
+                        let newShipmentsList;
+                        if (existingIndex > -1) {
+                            newShipmentsList = [...prevShipments];
+                            newShipmentsList[existingIndex] = newShipment;
+                        } else {
+                            newShipmentsList = [...prevShipments, newShipment];
+                        }
+                        return newShipmentsList.sort((a, b) => {
+                            const timeA = a.goLiveAt?.toDate()?.getTime() || 0;
+                            const timeB = b.goLiveAt?.toDate()?.getTime() || 0;
+                            return timeB - timeA;
+                        });
+                    });
+                }
+            });
+        });
+        setLoading(false);
     };
 
-    fetchRegisteredShipmentIds(shipmentIds => {
-      if (shipmentIds.length === 0) {
-        setShipments([]);
-        setLoading(false);
-        return;
-      }
-      
-      const unsubscribers = shipmentIds.map(id => {
-        const shipmentRef = doc(db, 'shipments', id);
-        return onSnapshot(shipmentRef, (docSnap) => {
-          if (docSnap.exists()) {
-            const newShipment = { id: docSnap.id, ...docSnap.data() } as Shipment;
-            setShipments(prevShipments => {
-              const existingIndex = prevShipments.findIndex(s => s.id === newShipment.id);
-              let newShipmentsList;
-              if (existingIndex > -1) {
-                newShipmentsList = [...prevShipments];
-                newShipmentsList[existingIndex] = newShipment;
-              } else {
-                newShipmentsList = [...prevShipments, newShipment];
-              }
-              // Sort after update
-              return newShipmentsList.sort((a, b) => {
-                const timeA = a.goLiveAt?.toDate()?.getTime() || 0;
-                const timeB = b.goLiveAt?.toDate()?.getTime() || 0;
-                return timeB - timeA;
-              });
-            });
-          }
-        });
-      });
+    fetchAndListen();
 
-      setLoading(false);
-
-      return () => unsubscribers.forEach(unsub => unsub());
-    });
+    return () => {
+        unsubscribers.forEach(unsub => unsub());
+    };
 
   }, [user]);
 
