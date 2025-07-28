@@ -2,6 +2,7 @@
 "use client";
 
 import { useEffect, useState } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
@@ -9,6 +10,14 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight, Zap, Ship, CheckCircle } from "lucide-react";
 import Link from "next/link";
 import { Skeleton } from '@/components/ui/skeleton';
+
+const insurancePartners = [
+    { name: "SecureShip Insurance", logo: "https://placehold.co/150x60.png", hint: "insurance company" },
+    { name: "Global Cargo Protect", logo: "https://placehold.co/150x60.png", hint: "logistics protect" },
+    { name: "Marine Assure", logo: "https://placehold.co/150x60.png", hint: "shipping marine" },
+    { name: "Freight Guardian", logo: "https://placehold.co/150x60.png", hint: "cargo freight" },
+    { name: "TransitSure", logo: "https://placehold.co/150x60.png", hint: "transport transit" },
+];
 
 export default function Home() {
   const [user, setUser] = useState<User | null>(null);
@@ -106,6 +115,34 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      <section className="w-full py-20 md:py-28">
+        <div className="container px-4 md:px-6">
+            <div className="flex flex-col items-center space-y-4 text-center mb-12">
+                <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl font-headline">
+                    Partnered with Leading Cargo Insurers
+                </h2>
+                <p className="max-w-[600px] text-muted-foreground md:text-lg">
+                    Ensuring your shipments are protected every step of the way.
+                </p>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-8 items-center justify-items-center">
+                {insurancePartners.map((partner) => (
+                    <div key={partner.name} className="grayscale hover:grayscale-0 transition-all">
+                       <Image
+                            src={partner.logo}
+                            alt={`${partner.name} Logo`}
+                            width={150}
+                            height={60}
+                            className="object-contain"
+                            data-ai-hint={partner.hint}
+                        />
+                    </div>
+                ))}
+            </div>
+        </div>
+      </section>
+
     </main>
   );
 }
