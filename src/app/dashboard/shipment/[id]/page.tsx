@@ -11,7 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Check, Pencil, Clock, Shield, Users } from "lucide-react";
+import { ArrowLeft, Check, Pencil, Clock, Shield, Users, Rocket } from "lucide-react";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -130,6 +130,24 @@ export default function ShipmentDetailPage() {
     }
   }
 
+  const handleGoLive = async () => {
+    if (!shipmentId) return;
+    setIsSubmitting(true);
+    try {
+      const shipmentDocRef = doc(db, "shipments", shipmentId);
+      await updateDoc(shipmentDocRef, { 
+        status: 'live',
+        goLiveAt: Timestamp.now() // Set go-live time to now
+      });
+      toast({ title: "Success!", description: "The shipment is now live for bidding." });
+    } catch (error) {
+      console.error("Error setting shipment to live: ", error);
+      toast({ title: "Error", description: "Could not set the shipment to live.", variant: "destructive" });
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
 
   if (loading || !shipment) {
     return (
@@ -173,8 +191,8 @@ export default function ShipmentDetailPage() {
   const isOwner = user?.uid === shipment.exporterId;
   const canEdit = isOwner && (shipment.status === 'draft' || shipment.status === 'scheduled');
   const canManage = userType === 'employee';
-  const canAcceptBid = isOwner && shipment.status === 'live';
-
+  const canAcceptBid = (isOwner || canManage) && shipment.status === 'live';
+  const canGoLive = canManage && (shipment.status === 'draft' || shipment.status === 'scheduled');
 
   return (
     <div className="container py-6 md:py-10">
@@ -183,18 +201,25 @@ export default function ShipmentDetailPage() {
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Back
             </Button>
-            {canEdit && (
-                <Button variant="outline" onClick={() => router.push(`/dashboard/exporter?edit=${shipmentId}`)}>
-                    <Pencil className="mr-2 h-4 w-4" />
-                    Edit Shipment
+            <div className="flex items-center gap-2">
+              {canGoLive && (
+                <Button onClick={handleGoLive} disabled={isSubmitting}>
+                  <Rocket className="mr-2 h-4 w-4" /> Go Live
                 </Button>
-            )}
-             {canManage && (
-                <Badge variant="outline" className="flex items-center gap-2">
-                    <Shield className="h-4 w-4" />
-                    Employee View
-                </Badge>
-            )}
+              )}
+              {canEdit && (
+                  <Button variant="outline" onClick={() => router.push(`/dashboard/exporter?edit=${shipmentId}`)}>
+                      <Pencil className="mr-2 h-4 w-4" />
+                      Edit Shipment
+                  </Button>
+              )}
+              {canManage && !canEdit && (
+                  <Badge variant="outline" className="flex items-center gap-2">
+                      <Shield className="h-4 w-4" />
+                      Employee View
+                  </Badge>
+              )}
+            </div>
         </div>
         <div className="grid lg:grid-cols-3 gap-8 items-start">
             <div className="lg:col-span-2 space-y-6">
