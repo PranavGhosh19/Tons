@@ -192,7 +192,7 @@ export default function ShipmentDetailPage() {
   const canManage = userType === 'employee';
   const canEdit = isOwner && (shipment.status === 'draft' || shipment.status === 'scheduled');
   const canAcceptBid = (isOwner || canManage) && shipment.status === 'live';
-  const canGoLive = canManage && (shipment.status === 'draft' || shipment.status === 'scheduled');
+  const canGoLive = canManage && shipment.status === 'scheduled';
 
   return (
     <div className="container py-6 md:py-10">
