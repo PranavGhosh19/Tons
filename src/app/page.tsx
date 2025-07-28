@@ -19,6 +19,14 @@ const insurancePartners = [
     { name: "Reliance General Insurance", logo: "https://placehold.co/150x60.png", hint: "Reliance Insurance logo" },
 ];
 
+const carrierProviders = [
+    { name: "Maersk", logo: "https://placehold.co/150x60.png", hint: "Maersk logo" },
+    { name: "MSC", logo: "https://placehold.co/150x60.png", hint: "MSC logo" },
+    { name: "CMA CGM", logo: "https://placehold.co/150x60.png", hint: "CMA CGM logo" },
+    { name: "COSCO", logo: "https://placehold.co/150x60.png", hint: "COSCO logo" },
+    { name: "Hapag-Lloyd", logo: "https://placehold.co/150x60.png", hint: "Hapag Lloyd logo" },
+];
+
 export default function Home() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -136,6 +144,33 @@ export default function Home() {
                             height={60}
                             className="object-contain"
                             data-ai-hint={partner.hint}
+                        />
+                    </div>
+                ))}
+            </div>
+        </div>
+      </section>
+
+      <section className="w-full py-20 md:py-28 bg-secondary">
+        <div className="container px-4 md:px-6">
+            <div className="flex flex-col items-center space-y-4 text-center mb-12">
+                <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl font-headline">
+                    Our Trusted Carrier Network
+                </h2>
+                <p className="max-w-[600px] text-muted-foreground md:text-lg">
+                    We work with the world's leading shipping lines to deliver your cargo safely and on time.
+                </p>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-8 items-center justify-items-center">
+                {carrierProviders.map((carrier) => (
+                    <div key={carrier.name} className="grayscale hover:grayscale-0 transition-all">
+                       <Image
+                            src={carrier.logo}
+                            alt={`${carrier.name} Logo`}
+                            width={150}
+                            height={60}
+                            className="object-contain"
+                            data-ai-hint={carrier.hint}
                         />
                     </div>
                 ))}
