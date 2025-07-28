@@ -189,8 +189,8 @@ export default function ShipmentDetailPage() {
   const hasDimensions = shipment.cargo?.dimensions?.length && shipment.cargo?.dimensions?.width && shipment.cargo?.dimensions?.height;
 
   const isOwner = user?.uid === shipment.exporterId;
-  const canEdit = isOwner && (shipment.status === 'draft' || shipment.status === 'scheduled');
   const canManage = userType === 'employee';
+  const canEdit = isOwner && (shipment.status === 'draft' || shipment.status === 'scheduled');
   const canAcceptBid = (isOwner || canManage) && shipment.status === 'live';
   const canGoLive = canManage && (shipment.status === 'draft' || shipment.status === 'scheduled');
 
@@ -202,11 +202,6 @@ export default function ShipmentDetailPage() {
                 Back
             </Button>
             <div className="flex items-center gap-2">
-              {canGoLive && (
-                <Button onClick={handleGoLive} disabled={isSubmitting}>
-                  <Rocket className="mr-2 h-4 w-4" /> Go Live
-                </Button>
-              )}
               {canEdit && (
                   <Button variant="outline" onClick={() => router.push(`/dashboard/exporter?edit=${shipmentId}`)}>
                       <Pencil className="mr-2 h-4 w-4" />
@@ -329,6 +324,12 @@ export default function ShipmentDetailPage() {
                         <p className="text-2xl font-bold font-headline text-accent-foreground capitalize">{statusInfo.text}</p>
                     </CardContent>
                 </Card>
+
+                {canGoLive && (
+                  <Button onClick={handleGoLive} disabled={isSubmitting} className="w-full">
+                    <Rocket className="mr-2 h-4 w-4" /> Go Live
+                  </Button>
+                )}
 
                 {(shipment.status === 'draft' || shipment.status === 'scheduled') && (
                     <Card className="bg-white dark:bg-card">
