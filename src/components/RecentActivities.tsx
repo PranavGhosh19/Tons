@@ -187,7 +187,7 @@ export function RecentActivities() {
                         <TableHead className="hidden md:table-cell">Destination</TableHead>
                         <TableHead className="hidden lg:table-cell">Delivery Deadline</TableHead>
                         <TableHead className="text-center">Status</TableHead>
-                        <TableHead className="text-right">{hasAwardedShipment ? 'Info' : 'Goes Live On'}</TableHead>
+                        <TableHead className="text-right">{hasAwardedShipment ? 'Freight Cost' : 'Goes Live On'}</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
