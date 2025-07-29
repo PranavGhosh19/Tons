@@ -15,13 +15,20 @@ import { ArrowLeft, Check, Pencil, Clock, Shield, Users, Rocket } from "lucide-r
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+
+type RegisteredCarrier = {
+    id: string;
+    legalName?: string;
+    registeredAt: Timestamp;
+};
 
 export default function ShipmentDetailPage() {
   const [user, setUser] = useState<User | null>(null);
   const [userType, setUserType] = useState<string | null>(null);
   const [shipment, setShipment] = useState<DocumentData | null>(null);
   const [bids, setBids] = useState<DocumentData[]>([]);
-  const [registeredCount, setRegisteredCount] = useState(0);
+  const [registeredCarriers, setRegisteredCarriers] = useState<RegisteredCarrier[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -97,17 +104,31 @@ export default function ShipmentDetailPage() {
   }, [shipmentId, shipment?.status, toast]);
   
   useEffect(() => {
-    if (!shipmentId) return;
+    if (!shipmentId || userType !== 'employee') return;
 
     const registerQuery = query(collection(db, "shipments", shipmentId, "register"));
-    const unsubscribeRegister = onSnapshot(registerQuery, (querySnapshot) => {
-      setRegisteredCount(querySnapshot.size);
+    const unsubscribeRegister = onSnapshot(registerQuery, async (querySnapshot) => {
+      const carrierPromises = querySnapshot.docs.map(async (regDoc) => {
+        const carrierId = regDoc.id;
+        const registrationData = regDoc.data();
+        
+        const userDocRef = doc(db, 'users', carrierId);
+        const userDoc = await getDoc(userDocRef);
+
+        return {
+            id: carrierId,
+            legalName: userDoc.exists() ? userDoc.data().companyDetails?.legalName : "Unknown Carrier",
+            registeredAt: registrationData.registeredAt
+        };
+      });
+      const carriers = await Promise.all(carrierPromises);
+      setRegisteredCarriers(carriers as RegisteredCarrier[]);
     }, (error) => {
-        console.error("Error fetching registration count: ", error);
+        console.error("Error fetching registration list: ", error);
     });
 
     return () => unsubscribeRegister();
-  }, [shipmentId]);
+  }, [shipmentId, userType]);
 
   const handleAcceptBid = async (bid: DocumentData) => {
     if (!shipmentId) return;
@@ -337,12 +358,47 @@ export default function ShipmentDetailPage() {
                             <CardTitle>Interest</CardTitle>
                         </CardHeader>
                         <CardContent>
-                           <div className="flex items-center gap-4">
-                                <Users className="h-8 w-8 text-primary" />
-                                <div>
-                                    <p className="text-2xl font-bold">{registeredCount}</p>
-                                    <p className="text-sm text-muted-foreground">Carriers Registered</p>
-                                </div>
+                           <div className="flex items-center justify-between">
+                               <div className="flex items-center gap-4">
+                                    <Users className="h-8 w-8 text-primary" />
+                                    <div>
+                                        <p className="text-2xl font-bold">{registeredCarriers.length}</p>
+                                        <p className="text-sm text-muted-foreground">Carriers Registered</p>
+                                    </div>
+                               </div>
+                               {canManage && registeredCarriers.length > 0 && (
+                                   <Dialog>
+                                       <DialogTrigger asChild>
+                                           <Button variant="outline">View List</Button>
+                                       </DialogTrigger>
+                                       <DialogContent className="sm:max-w-2xl">
+                                            <DialogHeader>
+                                                <DialogTitle>Registered Carriers</DialogTitle>
+                                                <DialogDescription>
+                                                    The following carriers have registered to bid on this shipment.
+                                                </DialogDescription>
+                                            </DialogHeader>
+                                            <div className="max-h-[60vh] overflow-y-auto">
+                                                <Table>
+                                                    <TableHeader>
+                                                        <TableRow>
+                                                            <TableHead>Carrier Legal Name</TableHead>
+                                                            <TableHead>Registered At</TableHead>
+                                                        </TableRow>
+                                                    </TableHeader>
+                                                    <TableBody>
+                                                        {registeredCarriers.map((carrier) => (
+                                                            <TableRow key={carrier.id}>
+                                                                <TableCell>{carrier.legalName || 'N/A'}</TableCell>
+                                                                <TableCell>{format(carrier.registeredAt.toDate(), "PPpp")}</TableCell>
+                                                            </TableRow>
+                                                        ))}
+                                                    </TableBody>
+                                                </Table>
+                                            </div>
+                                       </DialogContent>
+                                   </Dialog>
+                               )}
                            </div>
                         </CardContent>
                     </Card>
