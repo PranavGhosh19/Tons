@@ -14,6 +14,12 @@ import { cn } from '@/lib/utils';
 
 const db = getFirestore(app);
 
+interface Bid {
+    id: string;
+    bidAmount: number;
+    carrierId: string;
+}
+
 interface Shipment {
   id: string;
   productName: string;
@@ -40,6 +46,8 @@ interface Shipment {
   status: string;
   goLiveAt: Timestamp | null;
   winningCarrierId?: string;
+  winningBidId?: string;
+  userBid?: Bid | null;
 }
 
 export function RecentActivities() {
@@ -80,17 +88,31 @@ export function RecentActivities() {
 
         unsubscribers = shipmentIds.map(id => {
             const shipmentRef = doc(db, 'shipments', id);
-            return onSnapshot(shipmentRef, (docSnap) => {
+            return onSnapshot(shipmentRef, async (docSnap) => {
                 if (docSnap.exists()) {
-                    const newShipment = { id: docSnap.id, ...docSnap.data() } as Shipment;
+                    const shipmentData = { id: docSnap.id, ...docSnap.data() } as Shipment;
+
+                    // If awarded, fetch the user's specific bid
+                    if (shipmentData.status === 'awarded') {
+                        const bidsQuery = query(
+                            collection(db, 'shipments', id, 'bids'), 
+                            where('carrierId', '==', user.uid)
+                        );
+                        const bidsSnap = await getDocs(bidsQuery);
+                        if (!bidsSnap.empty) {
+                            const bidDoc = bidsSnap.docs[0];
+                            shipmentData.userBid = { id: bidDoc.id, ...bidDoc.data() } as Bid;
+                        }
+                    }
+
                     setShipments(prevShipments => {
-                        const existingIndex = prevShipments.findIndex(s => s.id === newShipment.id);
+                        const existingIndex = prevShipments.findIndex(s => s.id === shipmentData.id);
                         let newShipmentsList;
                         if (existingIndex > -1) {
                             newShipmentsList = [...prevShipments];
-                            newShipmentsList[existingIndex] = newShipment;
+                            newShipmentsList[existingIndex] = shipmentData;
                         } else {
-                            newShipmentsList = [...prevShipments, newShipment];
+                            newShipmentsList = [...prevShipments, shipmentData];
                         }
                         return newShipmentsList.sort((a, b) => {
                             const timeA = a.goLiveAt?.toDate()?.getTime() || 0;
@@ -120,18 +142,23 @@ export function RecentActivities() {
     }
   };
 
-  const getStatusInfo = (shipment: Shipment): { text: string; variant: "success" | "secondary" | "outline" } => {
+  const getStatusInfo = (shipment: Shipment): { text: string; variant: "success" | "secondary" | "outline" | "destructive" } => {
     switch (shipment.status) {
         case 'live':
             return { text: 'Live', variant: 'success' };
         case 'awarded':
-            return { text: 'Awarded', variant: 'success' };
+            if (shipment.winningCarrierId === user?.uid) {
+                return { text: 'You Won', variant: 'success' };
+            }
+            return { text: 'Not Won', variant: 'destructive' };
         case 'scheduled':
             return { text: 'Registered', variant: 'secondary' };
         default:
             return { text: 'Registered', variant: 'outline' };
     }
   }
+  
+  const hasAwardedShipment = shipments.some(s => s.status === 'awarded');
 
   if (loading) {
     return (
@@ -160,7 +187,7 @@ export function RecentActivities() {
                         <TableHead className="hidden md:table-cell">Destination</TableHead>
                         <TableHead className="hidden lg:table-cell">Delivery Deadline</TableHead>
                         <TableHead className="text-center">Status</TableHead>
-                        <TableHead className="text-right">Goes Live On</TableHead>
+                        <TableHead className="text-right">{hasAwardedShipment ? 'Info' : 'Goes Live On'}</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -178,7 +205,13 @@ export function RecentActivities() {
                                     </Badge>
                                 </TableCell>
                                 <TableCell className="text-right">
-                                    {shipment.goLiveAt ? (
+                                    {shipment.status === 'awarded' ? (
+                                        shipment.userBid ? (
+                                            <span className="font-semibold">${shipment.userBid.bidAmount.toLocaleString()}</span>
+                                        ) : (
+                                            <Badge variant="outline">No Bid</Badge>
+                                        )
+                                    ) : shipment.goLiveAt ? (
                                         <span>{format(shipment.goLiveAt.toDate(), "PPp")}</span>
                                     ) : (
                                         <Badge variant="secondary">Not Scheduled</Badge>
