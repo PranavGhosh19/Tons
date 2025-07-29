@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState } from "react";
@@ -16,7 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { User as UserIcon, LogOut, Settings, LifeBuoy, Menu, Shield, Users, FileText, Search } from "lucide-react";
+import { User as UserIcon, LogOut, Settings, LifeBuoy, Menu, Shield, Users, FileText, Search, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { doc, getDoc } from "firebase/firestore";
 import { Skeleton } from "./ui/skeleton";
@@ -38,6 +37,7 @@ const employeeNavLinks = [
     { href: "/dashboard/employee", label: "Dashboard" },
     { href: "/dashboard/manage-shipments", label: "Manage Shipments" },
     { href: "/dashboard/user-management", label: "User Management" },
+    { href: "/dashboard/verification", label: "Verification" },
 ];
 
 export function NavLinks() {
