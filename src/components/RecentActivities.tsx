@@ -2,7 +2,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { getAuth } from 'firebase/auth';
-import { collectionGroup, getDocs, query, where, getFirestore, doc, getDoc, orderBy, Timestamp, onSnapshot } from 'firebase/firestore';
+import { collection, collectionGroup, getDocs, query, where, getFirestore, doc, getDoc, orderBy, Timestamp, onSnapshot } from 'firebase/firestore';
 import { app } from '@/lib/firebase'; 
 import { Info, Loader2, Send } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
