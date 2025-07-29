@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from 'next/navigation';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { collection, query, getDocs, DocumentData, orderBy, doc, getDoc, addDoc, where, collectionGroup, onSnapshot } from 'firebase/firestore';
@@ -19,17 +19,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { RegisterButton } from "@/components/RegisterButton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function FindShipmentsPage() {
   const [user, setUser] = useState<User | null>(null);
   const [carrierName, setCarrierName] = useState<string>("");
   const [shipments, setShipments] = useState<DocumentData[]>([]);
-  const [registeredShipmentIds, setRegisteredShipmentIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [isBidDialogOpen, setIsBidDialogOpen] = useState(false);
   const [selectedShipment, setSelectedShipment] = useState<DocumentData | null>(null);
   const [bidAmount, setBidAmount] = useState("");
   const [isSubmittingBid, setIsSubmittingBid] = useState(false);
+  const [currentTab, setCurrentTab] = useState("all");
   
   const router = useRouter();
   const { toast } = useToast();
@@ -51,22 +52,6 @@ export default function FindShipmentsPage() {
     });
     return () => unsubscribeAuth();
   }, [router]);
-  
-  const fetchRegisteredShipments = useCallback(async (currentUser: User) => {
-    const registerQuery = query(
-      collectionGroup(db, 'register'),
-      where('carrierId', '==', currentUser.uid)
-    );
-    const registerSnap = await getDocs(registerQuery);
-    const ids = new Set<string>();
-    registerSnap.forEach((doc) => {
-      const parentPath = doc.ref.parent.parent?.id;
-      if (parentPath) ids.add(parentPath);
-    });
-    setRegisteredShipmentIds(ids);
-    return ids;
-  }, []);
-
 
   useEffect(() => {
     let unsubscribeSnapshots: () => void = () => {};
@@ -77,7 +62,7 @@ export default function FindShipmentsPage() {
         unsubscribeSnapshots = onSnapshot(shipmentsQuery, (snapshot) => {
             const shipmentsList = snapshot.docs
                 .map(doc => ({ id: doc.id, ...doc.data() }))
-                .filter(shipment => shipment.status !== 'live');
+                .filter(shipment => shipment.status !== 'live' && shipment.status !== 'awarded');
 
             setShipments(shipmentsList);
             setLoading(false);
@@ -91,6 +76,11 @@ export default function FindShipmentsPage() {
         unsubscribeSnapshots();
     };
   }, [user, toast]);
+
+  const filteredShipments = useMemo(() => {
+    if (currentTab === 'all') return shipments;
+    return shipments.filter(shipment => shipment.status === currentTab);
+  }, [shipments, currentTab]);
 
 
   const handleOpenBidDialog = (shipment: DocumentData) => {
@@ -138,8 +128,6 @@ export default function FindShipmentsPage() {
 
   const getStatusVariant = (status: string) => {
     switch (status) {
-      case 'awarded':
-        return 'success';
       case 'draft':
       case 'scheduled':
         return 'secondary';
@@ -174,6 +162,57 @@ export default function FindShipmentsPage() {
     setIsBidDialogOpen(false);
   }
 
+  const renderTable = (data: DocumentData[]) => {
+    if (data.length === 0) {
+        return (
+             <div className="border rounded-lg p-12 text-center bg-card dark:bg-card mt-8">
+                <h2 className="text-xl font-semibold mb-2">No shipments found</h2>
+                <p className="text-muted-foreground">There are no shipments that match the current filter.</p>
+            </div>
+        )
+    }
+    return (
+      <div className="border rounded-lg overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Product</TableHead>
+              <TableHead className="hidden sm:table-cell">Exporter</TableHead>
+              <TableHead className="hidden md:table-cell">Origin</TableHead>
+              <TableHead className="hidden md:table-cell">Destination</TableHead>
+              <TableHead className="hidden lg:table-cell text-right">Delivery Deadline</TableHead>
+              <TableHead className="hidden lg:table-cell text-right">Bid On</TableHead>
+              <TableHead className="text-center">Status</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {data.map((shipment) => {
+              const statusContent = (
+                  <Badge variant={getStatusVariant(shipment.status)} className="capitalize">
+                      {shipment.status}
+                  </Badge>
+              );
+
+              return (
+                  <TableRow key={shipment.id} onClick={() => handleRowClick(shipment)} className="cursor-pointer">
+                  <TableCell className="font-medium">{shipment.productName || 'N/A'}</TableCell>
+                  <TableCell className="hidden sm:table-cell">{shipment.exporterName || 'N/A'}</TableCell>
+                  <TableCell className="hidden md:table-cell">{shipment.origin?.portOfLoading || 'N/A'}</TableCell>
+                  <TableCell className="hidden md:table-cell">{shipment.destination?.portOfDelivery || 'N/A'}</TableCell>
+                  <TableCell className="hidden lg:table-cell text-right">{shipment.deliveryDeadline ? format(shipment.deliveryDeadline.toDate(), "dd/MM/yyyy") : 'N/A'}</TableCell>
+                  <TableCell className="hidden lg:table-cell text-right">{shipment.goLiveAt ? format(shipment.goLiveAt.toDate(), "dd/MM/yyyy p") : 'N/A'}</TableCell>
+                  <TableCell className="text-center">
+                      {statusContent}
+                  </TableCell>
+                  </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </div>
+    );
+  }
+
 
   if (loading) {
     return (
@@ -194,54 +233,16 @@ export default function FindShipmentsPage() {
         <h1 className="text-2xl sm:text-3xl font-bold font-headline">Find Shipments</h1>
       </div>
 
-      {shipments.length > 0 ? (
-        <div className="border rounded-lg overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Product</TableHead>
-                <TableHead className="hidden sm:table-cell">Exporter</TableHead>
-                <TableHead className="hidden md:table-cell">Origin</TableHead>
-                <TableHead className="hidden md:table-cell">Destination</TableHead>
-                <TableHead className="hidden lg:table-cell text-right">Delivery Deadline</TableHead>
-                <TableHead className="hidden lg:table-cell text-right">Bid On</TableHead>
-                <TableHead className="text-center">Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {shipments.map((shipment) => {
-                let statusContent;
-                if (shipment.status === 'awarded') {
-                    if (shipment.winningCarrierId === user?.uid) {
-                        statusContent = <Badge variant="success">You are Awarded</Badge>;
-                    } else {
-                        statusContent = <Badge variant="outline">Other Carrier has been Awarded</Badge>;
-                    }
-                } else {
-                    statusContent = (
-                        <Badge variant={getStatusVariant(shipment.status)} className="capitalize">
-                            {shipment.status}
-                        </Badge>
-                    );
-                }
+      <Tabs value={currentTab} onValueChange={setCurrentTab} className="mb-8">
+        <TabsList>
+            <TabsTrigger value="all">All</TabsTrigger>
+            <TabsTrigger value="scheduled">Scheduled</TabsTrigger>
+            <TabsTrigger value="draft">Draft</TabsTrigger>
+        </TabsList>
+      </Tabs>
 
-                return (
-                    <TableRow key={shipment.id} onClick={() => handleRowClick(shipment)} className="cursor-pointer">
-                    <TableCell className="font-medium">{shipment.productName || 'N/A'}</TableCell>
-                    <TableCell className="hidden sm:table-cell">{shipment.exporterName || 'N/A'}</TableCell>
-                    <TableCell className="hidden md:table-cell">{shipment.origin?.portOfLoading || 'N/A'}</TableCell>
-                    <TableCell className="hidden md:table-cell">{shipment.destination?.portOfDelivery || 'N/A'}</TableCell>
-                    <TableCell className="hidden lg:table-cell text-right">{shipment.deliveryDeadline ? format(shipment.deliveryDeadline.toDate(), "dd/MM/yyyy") : 'N/A'}</TableCell>
-                    <TableCell className="hidden lg:table-cell text-right">{shipment.goLiveAt ? format(shipment.goLiveAt.toDate(), "dd/MM/yyyy p") : 'N/A'}</TableCell>
-                    <TableCell className="text-center">
-                        {statusContent}
-                    </TableCell>
-                    </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </div>
+      {filteredShipments.length > 0 ? (
+        renderTable(filteredShipments)
       ) : (
         <div className="border rounded-lg p-12 text-center bg-card dark:bg-card">
           <h2 className="text-xl font-semibold mb-2">No shipments available right now</h2>
@@ -253,7 +254,7 @@ export default function FindShipmentsPage() {
           <DialogContent className="sm:max-w-2xl">
               <DialogHeader>
                   <DialogTitle className="text-2xl font-headline">Shipment Details</DialogTitle>
-                  <DialogDescription>Review the shipment details and place your bid if available.</DialogDescription>
+                  <DialogDescription>Review the shipment details and register your interest to bid.</DialogDescription>
               </DialogHeader>
               {selectedShipment && (
                   <div className="grid gap-6 py-4">
@@ -330,5 +331,3 @@ export default function FindShipmentsPage() {
     </div>
   );
 }
-
-    
