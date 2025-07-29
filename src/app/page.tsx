@@ -7,9 +7,10 @@ import { useRouter } from 'next/navigation';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Zap, Ship, CheckCircle } from "lucide-react";
+import { ArrowRight, Zap, Ship, CheckCircle, Anchor, Truck } from "lucide-react";
 import Link from "next/link";
 import { Skeleton } from '@/components/ui/skeleton';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 const insurancePartners = [
     { name: "Bajaj Allianz", logo: "https://placehold.co/150x60.png", hint: "Bajaj Allianz logo" },
@@ -126,6 +127,47 @@ export default function Home() {
 
       <section className="w-full py-20 md:py-28">
         <div className="container px-4 md:px-6">
+          <div className="flex flex-col items-center space-y-4 text-center mb-12">
+              <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl font-headline">
+                  Who Do We Help?
+              </h2>
+              <p className="max-w-[600px] text-muted-foreground md:text-lg">
+                  Our platform is designed to empower every link in the supply chain.
+              </p>
+          </div>
+          <div className="grid gap-8 md:grid-cols-2">
+            <Card className="p-6">
+              <CardHeader className="flex flex-row items-center gap-4 p-0 pb-6">
+                <div className="bg-primary text-primary-foreground rounded-full p-3">
+                  <Anchor className="h-6 w-6" />
+                </div>
+                <CardTitle className="text-2xl font-bold font-headline m-0">Exporters & Importers</CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                  <p className="text-muted-foreground">
+                    Whether you're sending goods across the globe or bringing them into the country, our platform provides the tools to find reliable shipping partners at competitive prices. Streamline your logistics, reduce costs, and gain full visibility over your supply chain.
+                  </p>
+              </CardContent>
+            </Card>
+             <Card className="p-6">
+              <CardHeader className="flex flex-row items-center gap-4 p-0 pb-6">
+                <div className="bg-primary text-primary-foreground rounded-full p-3">
+                  <Truck className="h-6 w-6" />
+                </div>
+                <CardTitle className="text-2xl font-bold font-headline m-0">Logistic Service Providers</CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                  <p className="text-muted-foreground">
+                   Access a constant stream of shipment opportunities to keep your fleet moving. Bid on jobs that match your routes and capacity, reduce empty miles, and grow your business with a network of verified exporters.
+                  </p>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </section>
+
+      <section className="w-full py-20 md:py-28 bg-secondary">
+        <div className="container px-4 md:px-6">
             <div className="flex flex-col items-center space-y-4 text-center mb-12">
                 <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl font-headline">
                     Partnered with Leading Cargo Insurers
@@ -151,7 +193,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="w-full py-20 md:py-28 bg-secondary">
+      <section className="w-full py-20 md:py-28">
         <div className="container px-4 md:px-6">
             <div className="flex flex-col items-center space-y-4 text-center mb-12">
                 <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl font-headline">
