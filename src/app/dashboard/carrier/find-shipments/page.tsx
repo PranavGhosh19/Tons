@@ -231,15 +231,14 @@ export default function FindShipmentsPage() {
     <div className="container py-6 md:py-10">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-2xl sm:text-3xl font-bold font-headline">Find Shipments</h1>
+        <Tabs value={currentTab} onValueChange={setCurrentTab}>
+          <TabsList>
+              <TabsTrigger value="all">All</TabsTrigger>
+              <TabsTrigger value="scheduled">Scheduled</TabsTrigger>
+              <TabsTrigger value="draft">Draft</TabsTrigger>
+          </TabsList>
+        </Tabs>
       </div>
-
-      <Tabs value={currentTab} onValueChange={setCurrentTab} className="mb-8">
-        <TabsList>
-            <TabsTrigger value="all">All</TabsTrigger>
-            <TabsTrigger value="scheduled">Scheduled</TabsTrigger>
-            <TabsTrigger value="draft">Draft</TabsTrigger>
-        </TabsList>
-      </Tabs>
 
       {filteredShipments.length > 0 ? (
         renderTable(filteredShipments)
