@@ -104,8 +104,16 @@ export default function ShipmentDetailPage() {
   }, [shipmentId, shipment?.status, toast]);
   
   useEffect(() => {
-    if (!shipmentId || userType !== 'employee') return;
-
+    if (!shipmentId || userType !== 'employee') {
+        // Only fetch detailed carrier list for employees
+        const registerQuery = query(collection(db, "shipments", shipmentId, "register"));
+        const unsubscribeRegister = onSnapshot(registerQuery, (querySnapshot) => {
+             setRegisteredCarriers(querySnapshot.docs.map(doc => ({id: doc.id, ...doc.data()} as RegisteredCarrier)));
+        });
+        return () => unsubscribeRegister();
+    }
+    
+    // For employees, fetch the names as well
     const registerQuery = query(collection(db, "shipments", shipmentId, "register"));
     const unsubscribeRegister = onSnapshot(registerQuery, async (querySnapshot) => {
       const carrierPromises = querySnapshot.docs.map(async (regDoc) => {
@@ -343,14 +351,13 @@ export default function ShipmentDetailPage() {
                     </CardHeader>
                     <CardContent>
                         <p className="text-2xl font-bold font-headline text-accent-foreground capitalize">{statusInfo.text}</p>
+                        {canGoLive && (
+                            <Button onClick={handleGoLive} disabled={isSubmitting} className="w-full mt-4">
+                                <Rocket className="mr-2 h-4 w-4" /> Go Live
+                            </Button>
+                        )}
                     </CardContent>
                 </Card>
-
-                {canGoLive && (
-                  <Button onClick={handleGoLive} disabled={isSubmitting} className="w-full">
-                    <Rocket className="mr-2 h-4 w-4" /> Go Live
-                  </Button>
-                )}
 
                 {(shipment.status === 'draft' || shipment.status === 'scheduled') && (
                     <Card className="bg-white dark:bg-card">
