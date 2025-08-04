@@ -39,6 +39,7 @@ const employeeNavLinks = [
     { href: "/dashboard/user-management", label: "User Management" },
     { href: "/dashboard/verification", label: "Verification" },
     { href: "/dashboard/analytics", label: "Analytics" },
+    { href: "/dashboard/insurance", label: "Insurance Companies" },
 ];
 
 export function NavLinks() {
