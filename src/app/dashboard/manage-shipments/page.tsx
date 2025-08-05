@@ -211,6 +211,7 @@ export default function ManageShipmentsPage() {
                 <TableHead>Exporter</TableHead>
                 <TableHead className="hidden md:table-cell">Destination</TableHead>
                 <TableHead className="hidden lg:table-cell">Created At</TableHead>
+                <TableHead className="hidden lg:table-cell">Scheduled For</TableHead>
                 <TableHead className="text-center">Status</TableHead>
               </TableRow>
             </TableHeader>
@@ -221,6 +222,7 @@ export default function ManageShipmentsPage() {
                   <TableCell>{shipment.exporterName || 'N/A'}</TableCell>
                   <TableCell className="hidden md:table-cell">{shipment.destination?.portOfDelivery || 'N/A'}</TableCell>
                   <TableCell className="hidden lg:table-cell">{shipment.createdAt ? format(shipment.createdAt.toDate(), "dd/MM/yyyy") : 'N/A'}</TableCell>
+                  <TableCell className="hidden lg:table-cell">{shipment.goLiveAt ? format(shipment.goLiveAt.toDate(), "dd/MM/yyyy p") : 'N/A'}</TableCell>
                   <TableCell className="text-center">
                     <Badge variant={getStatusVariant(shipment.status)} className={cn("capitalize", { "animate-blink bg-green-500/80": shipment.status === 'live' })}>
                         {shipment.status}
