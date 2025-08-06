@@ -10,15 +10,28 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
-import { format, isSameDay } from "date-fns";
+import { format, isSameDay, isToday, isTomorrow } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
-import { Calendar as CalendarIcon, Search, X, Filter } from "lucide-react";
+import { Calendar as CalendarIcon, Search, X, Filter, RadioTower, Sunrise, Award } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
+const StatCard = ({ title, value, icon: Icon }: { title: string, value: number, icon: React.ElementType }) => (
+    <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">{title}</CardTitle>
+            <Icon className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+            <div className="text-2xl font-bold">{value}</div>
+        </CardContent>
+    </Card>
+);
 
 export default function ManageShipmentsPage() {
   const [user, setUser] = useState<User | null>(null);
@@ -99,6 +112,13 @@ export default function ManageShipmentsPage() {
     });
   }, [shipments, searchTerm, statusFilter, dateFilter, goLiveDateFilter]);
 
+  const stats = useMemo(() => {
+    const liveToday = shipments.filter(s => s.goLiveAt && isToday(s.goLiveAt.toDate())).length;
+    const liveTomorrow = shipments.filter(s => s.goLiveAt && isTomorrow(s.goLiveAt.toDate())).length;
+    const awarded = shipments.filter(s => s.status === 'awarded').length;
+    return { liveToday, liveTomorrow, awarded };
+  }, [shipments]);
+
 
   const getStatusVariant = (status: string) => {
     switch (status) {
@@ -138,8 +158,17 @@ export default function ManageShipmentsPage() {
 
   return (
     <div className="container py-6 md:py-10">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
         <h1 className="text-2xl sm:text-3xl font-bold font-headline">Manage All Shipments</h1>
+      </div>
+
+       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 mb-8">
+            <StatCard title="Live for Today" value={stats.liveToday} icon={RadioTower} />
+            <StatCard title="Live Tomorrow" value={stats.liveTomorrow} icon={Sunrise} />
+            <StatCard title="Awarded" value={stats.awarded} icon={Award} />
+       </div>
+
+      <div className="flex justify-end mb-4">
         <Button variant="outline" onClick={() => setShowFilters(!showFilters)}>
           <Filter className="mr-2 h-4 w-4" />
           {showFilters ? 'Hide Filters' : 'Apply Filter'}
