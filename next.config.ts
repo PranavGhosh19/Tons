@@ -28,6 +28,14 @@ const nextConfig: NextConfig = {
             key: 'Permissions-Policy',
             value: "payment=self",
           },
+           {
+            key: 'Content-Security-Policy',
+            value: "upgrade-insecure-requests",
+          },
+          {
+            key: 'Strict-Transport-Security',
+            value: 'max-age=31536000; includeSubDomains; preload',
+          },
         ],
       },
     ]
