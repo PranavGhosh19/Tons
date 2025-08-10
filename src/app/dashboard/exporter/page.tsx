@@ -29,7 +29,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { PlusCircle, Send, Pencil, Clock, Trash2 } from "lucide-react";
+import { PlusCircle, Send, Pencil, Clock } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -402,18 +402,6 @@ function ExporterDashboardPage() {
     }
   }
 
-  const handleDeleteShipment = async (shipmentId: string) => {
-    if (!user) return;
-    try {
-        await deleteDoc(doc(db, "shipments", shipmentId));
-        toast({ title: "Success", description: "Shipment draft has been deleted."});
-        fetchProducts(user.uid); // Refresh the list
-    } catch (error) {
-        console.error("Error deleting shipment: ", error);
-        toast({ title: "Error", description: "Failed to delete shipment draft.", variant: "destructive"});
-    }
-  }
-
   if (loading || !user) {
     return <PageSkeleton />;
   }
@@ -658,7 +646,6 @@ function ExporterDashboardPage() {
                 <TableHead className="hidden lg:table-cell">Departure Date</TableHead>
                 <TableHead className="hidden lg:table-cell">Delivery Deadline</TableHead>
                 <TableHead className="text-center">Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -672,46 +659,6 @@ function ExporterDashboardPage() {
                     <Badge variant={getStatusVariant(product.status)} className={cn("capitalize", { "animate-blink bg-green-500/80": product.status === 'live' })}>
                         {product.status}
                     </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {product.status === 'draft' && (
-                       <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                             <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={(e) => e.stopPropagation()}
-                                className="text-destructive hover:text-destructive"
-                            >
-                                <Trash2 className="h-4 w-4" />
-                                <span className="sr-only">Delete</span>
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                This action cannot be undone. This will permanently delete your
-                                shipment draft.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel onClick={(e) => e.stopPropagation()}>Cancel</AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDeleteShipment(product.id);
-                                }}
-                                className={cn(
-                                    "bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                )}
-                              >
-                                Delete
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                    )}
                   </TableCell>
                 </TableRow>
               ))}
@@ -727,6 +674,3 @@ function ExporterDashboardPage() {
     </div>
   );
 }
-
-
-    
