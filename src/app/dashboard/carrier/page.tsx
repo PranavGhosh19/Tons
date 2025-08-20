@@ -85,27 +85,6 @@ export default function CarrierDashboardPage() {
         </Button>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        <DashboardCard 
-            title="Find New Shipments"
-            description="Browse and bid on available shipments."
-            href="/dashboard/carrier/find-shipments"
-            icon={Search}
-        />
-        <DashboardCard 
-            title="My Bids"
-            description="Track the status of your active bids."
-            href="/dashboard/carrier/my-bids"
-            icon={FileText}
-        />
-        <DashboardCard 
-            title="Earnings"
-            description="View your completed jobs and earnings."
-            href="#"
-            icon={DollarSign}
-        />
-      </div>
-
        <div className="mt-12">
             <Card>
                 <CardHeader>
