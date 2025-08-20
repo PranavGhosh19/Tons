@@ -32,15 +32,25 @@ const CarrierBottomNav = () => {
     ];
     return (
         <div className="flex h-full items-center justify-evenly gap-2">
-            {carrierLinks.map(link => (
-                <NavItem 
-                    key={link.href}
-                    href={link.href}
-                    icon={link.icon}
-                    label={link.label}
-                    isActive={pathname.startsWith(link.href)}
-                />
-            ))}
+            {carrierLinks.map(link => {
+                 let isActive = false;
+                 // Exact match for the main dashboard page
+                 if (link.href === "/dashboard/carrier") {
+                   isActive = pathname === link.href;
+                 } else {
+                   // Prefix match for sub-pages
+                   isActive = pathname.startsWith(link.href);
+                 }
+                return (
+                    <NavItem 
+                        key={link.href}
+                        href={link.href}
+                        icon={link.icon}
+                        label={link.label}
+                        isActive={isActive}
+                    />
+                )
+            })}
         </div>
     );
 };
