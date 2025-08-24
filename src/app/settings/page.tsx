@@ -198,13 +198,17 @@ export default function SettingsPage() {
                                         <Separator />
                                         <div className="space-y-4">
                                             <h3 className="text-lg font-medium">Verified Company Details</h3>
-                                            <div className="grid sm:grid-cols-3 items-center gap-4">
+                                            <div className="grid sm:grid-cols-3 items-start gap-4">
                                                 <Label>Legal Name</Label>
                                                 <p className="sm:col-span-2 text-sm text-muted-foreground">{userData.companyDetails.legalName}</p>
                                             </div>
-                                            <div className="grid sm:grid-cols-3 items-center gap-4">
+                                            <div className="grid sm:grid-cols-3 items-start gap-4">
                                                 <Label>Address</Label>
                                                 <p className="sm:col-span-2 text-sm text-muted-foreground">{userData.companyDetails.address}</p>
+                                            </div>
+                                            <div className="grid sm:grid-cols-3 items-start gap-4">
+                                                <Label>GSTIN</Label>
+                                                <p className="sm:col-span-2 text-sm text-muted-foreground">{userData.gstin}</p>
                                             </div>
                                         </div>
                                     </>
