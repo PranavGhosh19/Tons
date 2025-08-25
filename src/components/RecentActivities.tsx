@@ -47,6 +47,7 @@ interface Shipment {
   goLiveAt: Timestamp | null;
   winningCarrierId?: string;
   winningBidId?: string;
+  winningBidAmount?: number;
   userBid?: Bid | null;
 }
 
@@ -206,10 +207,10 @@ export function RecentActivities() {
                                 </TableCell>
                                 <TableCell className="text-right">
                                     {shipment.status === 'awarded' ? (
-                                        shipment.userBid ? (
-                                            <span className="font-semibold">${shipment.userBid.bidAmount.toLocaleString()}</span>
+                                        shipment.winningBidAmount ? (
+                                            <span className="font-semibold">${shipment.winningBidAmount.toLocaleString()}</span>
                                         ) : (
-                                            <Badge variant="outline">No Bid</Badge>
+                                            <Badge variant="outline">N/A</Badge>
                                         )
                                     ) : shipment.goLiveAt ? (
                                         <span>{format(shipment.goLiveAt.toDate(), "PPp")}</span>
