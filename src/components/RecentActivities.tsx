@@ -151,7 +151,7 @@ export function RecentActivities() {
             if (shipment.winningCarrierId === user?.uid) {
                 return { text: 'You Won', variant: 'success' };
             }
-            return { text: 'Not Won', variant: 'destructive' };
+            return { text: 'Better luck next time', variant: 'destructive' };
         case 'scheduled':
             return { text: 'Registered', variant: 'secondary' };
         default:
@@ -188,7 +188,7 @@ export function RecentActivities() {
                         <TableHead className="hidden md:table-cell">Destination</TableHead>
                         <TableHead className="hidden lg:table-cell">Delivery Deadline</TableHead>
                         <TableHead className="text-center">Status</TableHead>
-                        <TableHead className="text-right">{hasAwardedShipment ? 'Freight Cost' : 'Goes Live On'}</TableHead>
+                        <TableHead className="text-right">Freight Cost</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -206,16 +206,16 @@ export function RecentActivities() {
                                     </Badge>
                                 </TableCell>
                                 <TableCell className="text-right">
-                                    {shipment.status === 'awarded' ? (
-                                        shipment.winningBidAmount ? (
-                                            <span className="font-semibold">${shipment.winningBidAmount.toLocaleString()}</span>
-                                        ) : (
-                                            <Badge variant="outline">N/A</Badge>
-                                        )
-                                    ) : shipment.goLiveAt ? (
+                                     {shipment.status === 'awarded' && shipment.winningCarrierId === user?.uid ? (
+                                        <span className="font-semibold">${(shipment.winningBidAmount || 0).toLocaleString()}</span>
+                                    ) : shipment.status === 'scheduled' && shipment.goLiveAt ? (
                                         <span>{format(shipment.goLiveAt.toDate(), "PPp")}</span>
+                                    ) : shipment.status === 'live' ? (
+                                         <Badge variant="success" className="animate-blink">Live Now</Badge>
+                                    ) : statusInfo.text === 'Better luck next time' ? (
+                                        <span>-</span>
                                     ) : (
-                                        <Badge variant="secondary">Not Scheduled</Badge>
+                                        <Badge variant="secondary">Pending</Badge>
                                     )}
                                 </TableCell>
                             </TableRow>
@@ -227,3 +227,4 @@ export function RecentActivities() {
     </>
   );
 }
+
