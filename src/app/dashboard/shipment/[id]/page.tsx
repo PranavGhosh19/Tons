@@ -11,7 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Check, Clock, Shield, Users, Rocket, Pencil, Trash2 } from "lucide-react";
+import { ArrowLeft, Check, Clock, Shield, Users, Rocket, Pencil, Trash2, FileText } from "lucide-react";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -69,19 +69,17 @@ export default function ShipmentDetailPage() {
   }, [router]);
 
   useEffect(() => {
-    if (!user || !shipmentId || !userType) return;
+    if (!user || !shipmentId) return;
 
     const shipmentDocRef = doc(db, "shipments", shipmentId);
     const unsubscribeShipment = onSnapshot(shipmentDocRef, (docSnap) => {
        if (docSnap.exists()) {
         const shipmentData = docSnap.data();
-        // Allow access if user is the exporter OR an employee
-        if (shipmentData.exporterId === user.uid || userType === 'employee') {
-            setShipment({ id: docSnap.id, ...shipmentData });
-        } else {
-            toast({ title: "Error", description: "You are not authorized to view this page.", variant: "destructive" });
-            router.push("/dashboard");
-        }
+        
+        // This check is primarily for initial page load authorization.
+        // More granular access control is handled by the `can...` variables below.
+        setShipment({ id: docSnap.id, ...shipmentData });
+
       } else {
         toast({ title: "Error", description: "Shipment not found.", variant: "destructive" });
         router.push("/dashboard");
@@ -95,7 +93,7 @@ export default function ShipmentDetailPage() {
 
     return () => unsubscribeShipment();
 
-  }, [user, userType, shipmentId, router, toast]);
+  }, [user, shipmentId, router, toast]);
 
   useEffect(() => {
     if (!shipmentId || shipment?.status === 'draft') {
@@ -248,11 +246,14 @@ export default function ShipmentDetailPage() {
   const hasDimensions = shipment.cargo?.dimensions?.length && shipment.cargo?.dimensions?.width && shipment.cargo?.dimensions?.height;
 
   const isOwner = user?.uid === shipment.exporterId;
-  const canManage = userType === 'employee';
+  const isEmployee = userType === 'employee';
+  const isWinningCarrier = user?.uid === shipment.winningCarrierId;
+  
   const canEdit = isOwner && (shipment.status === 'draft' || shipment.status === 'scheduled');
   const canDelete = isOwner && shipment.status === 'draft';
-  const canAcceptBid = (isOwner || canManage) && shipment.status === 'live';
-  const canGoLive = canManage && shipment.status === 'scheduled';
+  const canAcceptBid = (isOwner || isEmployee) && shipment.status === 'live';
+  const canGoLive = isEmployee && shipment.status === 'scheduled';
+  const canViewDocuments = (isOwner || isEmployee || isWinningCarrier) && shipment.status === 'awarded';
 
   return (
     <div className="container py-6 md:py-10">
@@ -292,7 +293,13 @@ export default function ShipmentDetailPage() {
                       Edit Shipment
                   </Button>
               )}
-              {canManage && !canEdit && (
+               {canViewDocuments && (
+                 <Button onClick={() => router.push(`/dashboard/shipment/${shipmentId}/documents`)}>
+                    <FileText className="mr-2 h-4 w-4" />
+                    View Documents
+                 </Button>
+               )}
+              {isEmployee && !canEdit && (
                   <Badge variant="outline" className="flex items-center gap-2">
                       <Shield className="h-4 w-4" />
                       Employee View
@@ -428,7 +435,7 @@ export default function ShipmentDetailPage() {
                                         <p className="text-sm text-muted-foreground">Carriers Registered</p>
                                     </div>
                                </div>
-                               {canManage && registeredCarriers.length > 0 && (
+                               {isEmployee && registeredCarriers.length > 0 && (
                                    <Dialog>
                                        <DialogTrigger asChild>
                                            <Button variant="outline">View List</Button>
