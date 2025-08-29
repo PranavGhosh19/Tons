@@ -152,18 +152,29 @@ export default function ShipmentDetailPage() {
     if (!shipmentId) return;
     setIsSubmitting(true);
     try {
+        const carrierDocRef = doc(db, "users", bid.carrierId);
+        const carrierDoc = await getDoc(carrierDocRef);
+
+        if (!carrierDoc.exists() || !carrierDoc.data()?.companyDetails?.legalName) {
+            toast({ title: "Error", description: "Could not verify carrier's legal name.", variant: "destructive" });
+            setIsSubmitting(false);
+            return;
+        }
+        const carrierLegalName = carrierDoc.data()!.companyDetails.legalName;
+
         const shipmentDocRef = doc(db, "shipments", shipmentId);
         await updateDoc(shipmentDocRef, { 
             status: 'awarded',
             winningBidId: bid.id,
             winningCarrierId: bid.carrierId,
             winningCarrierName: bid.carrierName,
+            winningCarrierLegalName: carrierLegalName, // Add the verified legal name
             winningBidAmount: bid.bidAmount
         });
         toast({ title: "Bid Awarded!", description: `You have accepted the bid from ${bid.carrierName}.`});
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error accepting bid: ", error);
-        toast({ title: "Error", description: "Could not accept the bid.", variant: "destructive" });
+        toast({ title: "Error", description: error.message || "Could not accept the bid.", variant: "destructive" });
     } finally {
         setIsSubmitting(false);
     }

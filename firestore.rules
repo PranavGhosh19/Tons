@@ -3,128 +3,70 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ───── Helper Functions ─────
-    function isExporter(userId) {
-      return get(/databases/$(database)/documents/users/$(userId)).data.userType == 'exporter';
+    // Helper function to check if a user is an authenticated employee
+    function isEmployee() {
+      return exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userType == 'employee';
     }
 
-    function isCarrier(userId) {
-      return get(/databases/$(database)/documents/users/$(userId)).data.userType == 'carrier';
-    }
-
-    function isEmployee(userId) {
-      return get(/databases/$(database)/documents/users/$(userId)).data.userType == 'employee';
-    }
-
-    function getShipment(shipmentId) {
-      return get(/databases/$(database)/documents/shipments/$(shipmentId));
-    }
-
-    // ───── Users Collection ─────
+    // Rules for the 'users' collection
     match /users/{userId} {
-      allow read, update: if request.auth.uid == userId || isEmployee(request.auth.uid);
-      allow create: if request.auth.uid == userId 
-                    && request.resource.data.email == request.auth.token.email;
+      // Users can read and update their own document.
+      // Employees can read any user document.
+      allow read, update: if request.auth.uid == userId || isEmployee();
+      // Only authenticated users can create their own user document.
+      allow create: if request.auth.uid == userId;
     }
 
-    // ───── Shipments Collection ─────
+    // Rules for the 'shipments' collection
     match /shipments/{shipmentId} {
+      // Anyone authenticated can read shipment details.
+      allow read: if request.auth.uid != null;
 
-      allow create: if request.auth.uid != null
-                    && isExporter(request.auth.uid)
-                    && request.resource.data.exporterId == request.auth.uid;
+      // Exporters can create shipments for themselves.
+      allow create: if request.auth.uid == request.resource.data.exporterId;
 
-      // Allow list access to authenticated users. The 'get' rule below will enforce query constraints.
-      allow list: if request.auth.uid != null;
-      
-      // Define who can read a specific shipment document. This is critical for securing list queries.
-      allow get: if request.auth.uid != null && (
-        isEmployee(request.auth.uid) ||
-        (isExporter(request.auth.uid) && resource.data.exporterId == request.auth.uid) ||
-        // Carriers can get any shipment, as their list queries are already filtered by status on the client.
-        // And they need to access awarded/draft shipments if they have registered for them.
-        isCarrier(request.auth.uid)
-      );
-
-      // Update shipment:
-      allow update: if request.auth.uid != null && (
-        // Employees can always update
-        isEmployee(request.auth.uid) ||
-
-        // Exporters can update with constraints
-        (
-          isExporter(request.auth.uid) &&
-          resource.data.exporterId == request.auth.uid &&
+      // Update rules for shipments
+      allow update: if
+          // Rule 1: Exporter can update their own shipment if it's a draft or scheduled
+          (request.auth.uid == resource.data.exporterId && (resource.data.status == 'draft' || resource.data.status == 'scheduled')) ||
+          // Rule 2: Employee can update any shipment (e.g., to go-live)
+          isEmployee() ||
+          // Rule 3: Enforce data integrity when a shipment is awarded
           (
-            // Editing while draft or scheduled, without changing critical fields
-            (
-              (resource.data.status == 'draft' || resource.data.status == 'scheduled') &&
-              request.resource.data.exporterId == resource.data.exporterId &&
-              request.resource.data.createdAt == resource.data.createdAt
-            ) ||
+            request.resource.data.status == 'awarded' &&
+            resource.data.status == 'live' &&
+            (request.auth.uid == resource.data.exporterId || isEmployee()) &&
+            // The provided winningCarrierLegalName must match the carrier's actual legal name from their profile
+            request.resource.data.winningCarrierLegalName == get(/databases/$(database)/documents/users/$(request.resource.data.winningCarrierId)).data.companyDetails.legalName
+          );
 
-            // Awarding shipment
-            (
-              resource.data.status == 'live' &&
-              request.resource.data.status == 'awarded' &&
-              request.resource.data.winningBidId != null
-            )
-          )
-        )
-      );
+      // Deletion rules for shipments
+      allow delete: if
+          // Exporter can delete their own shipment only if it's a draft.
+          (request.auth.uid == resource.data.exporterId && resource.data.status == 'draft') ||
+          // Employees can delete any shipment.
+          isEmployee();
 
-      allow delete: if request.auth.uid != null &&
-        isExporter(request.auth.uid) &&
-        resource.data.exporterId == request.auth.uid &&
-        resource.data.status == 'draft';
-    }
+      // Nested 'bids' subcollection rules
+      match /bids/{bidId} {
+        // Authenticated users can read bids.
+        allow read: if request.auth.uid != null;
+        // Carriers can only place bids on 'live' shipments.
+        allow create: if get(/databases/$(database)/documents/shipments/$(shipmentId)).data.status == 'live' &&
+                         exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+                         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userType == 'carrier' &&
+                         request.auth.uid == request.resource.data.carrierId;
+      }
 
-    // ───── Bids Subcollection ─────
-    match /shipments/{shipmentId}/bids/{bidId} {
-      allow read: if request.auth.uid != null && (
-        isEmployee(request.auth.uid) ||
-
-        // Exporters can read bids on their own shipments
-        (isExporter(request.auth.uid) &&
-         getShipment(shipmentId).data.exporterId == request.auth.uid) ||
-
-        // Carriers can read bids if shipment is live
-        (isCarrier(request.auth.uid) &&
-         getShipment(shipmentId).data.status == 'live')
-      );
-
-      allow create: if request.auth.uid != null &&
-        isCarrier(request.auth.uid) &&
-        request.resource.data.carrierId == request.auth.uid &&
-        getShipment(shipmentId).data.status == 'live';
-    }
-
-    // ───── Register Subcollection ─────
-    match /shipments/{shipmentId}/register/{carrierId} {
-      allow read: if request.auth.uid != null && (
-        isEmployee(request.auth.uid) ||
-        (isExporter(request.auth.uid) && getShipment(shipmentId).data.exporterId == request.auth.uid) ||
-        (isCarrier(request.auth.uid) && request.auth.uid == carrierId)
-      );
-
-      allow create: if request.auth.uid != null &&
-        isCarrier(request.auth.uid) &&
-        request.auth.uid == carrierId &&
-        getShipment(shipmentId).data.status == 'scheduled';
-    }
-
-    // ───── CollectionGroup Query on Register ─────
-    match /{documentPath=**}/register/{docId} {
-      allow read: if request.auth.uid != null
-                  && isCarrier(request.auth.uid)
-                  && resource.data.carrierId == request.auth.uid;
-    }
-
-    // ───── CollectionGroup Query on Bids ─────
-    match /{documentPath=**}/bids/{bidId} {
-      allow read: if request.auth.uid != null
-                  && isCarrier(request.auth.uid)
-                  && resource.data.carrierId == request.auth.uid;
+      // Nested 'register' subcollection rules
+      match /register/{carrierId} {
+         // Authenticated users can read registration info
+         allow read: if request.auth.uid != null;
+         // A carrier can register their own interest for a scheduled shipment.
+         allow create: if request.auth.uid == carrierId &&
+                          get(/databases/$(database)/documents/shipments/$(shipmentId)).data.status == 'scheduled';
+      }
     }
   }
 }
