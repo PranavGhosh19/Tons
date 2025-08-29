@@ -31,8 +31,6 @@ export default function ShipmentDocumentsPage() {
   const [user, setUser] = useState<User | null>(null);
   const [userType, setUserType] = useState<string | null>(null);
   const [shipment, setShipment] = useState<DocumentData | null>(null);
-  const [exporter, setExporter] = useState<DocumentData | null>(null);
-  const [vendor, setVendor] = useState<DocumentData | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Exporter POC Input State
@@ -69,7 +67,7 @@ export default function ShipmentDocumentsPage() {
   useEffect(() => {
     if (!user || !userType || !shipmentId) return;
 
-    const fetchShipmentAndPartyDetails = async () => {
+    const fetchShipmentDetails = async () => {
         try {
             const shipmentDocRef = doc(db, "shipments", shipmentId);
             const docSnap = await getDoc(shipmentDocRef);
@@ -83,26 +81,11 @@ export default function ShipmentDocumentsPage() {
 
                 if (shipmentData.status === 'awarded' && (isOwner || isWinningCarrier || isEmployee)) {
                     setShipment({ id: docSnap.id, ...shipmentData });
-
-                    // Fetch exporter details
-                    const exporterDocRef = doc(db, "users", shipmentData.exporterId);
-                    const exporterDoc = await getDoc(exporterDocRef);
-                    if (exporterDoc.exists()) {
-                        const exporterData = exporterDoc.data();
-                        setExporter(exporterData);
-                        setExporterPocFullName(exporterData.pocFullName || '');
-                        setExporterPocPhoneNumber(exporterData.pocPhoneNumber || '');
-                    }
-                    
-                    // Fetch vendor (winning carrier) details
-                    if (shipmentData.winningCarrierId) {
-                        const vendorDocRef = doc(db, "users", shipmentData.winningCarrierId);
-                        const vendorDoc = await getDoc(vendorDocRef);
-                        if (vendorDoc.exists()) {
-                            setVendor(vendorDoc.data());
-                        }
-                    }
-
+                    // Pre-fill POC info if it exists on the shipment doc
+                    setExporterPocFullName(shipmentData.exporterPocFullName || '');
+                    setExporterPocPhoneNumber(shipmentData.exporterPocPhoneNumber || '');
+                    setVendorPocFullName(shipmentData.vendorPocFullName || '');
+                    setVendorPocPhoneNumber(shipmentData.vendorPocPhoneNumber || '');
                 } else {
                     toast({ title: "Unauthorized", description: "You don't have permission to view these documents.", variant: "destructive" });
                     router.push(`/dashboard`);
@@ -113,24 +96,24 @@ export default function ShipmentDocumentsPage() {
             }
         } catch (error) {
             console.error("Error fetching data: ", error);
-            toast({ title: "Error", description: "Failed to fetch shipment and party details.", variant: "destructive" });
+            toast({ title: "Error", description: "Failed to fetch shipment details.", variant: "destructive" });
         } finally {
             setLoading(false);
         }
     }
     
-    fetchShipmentAndPartyDetails();
+    fetchShipmentDetails();
 
   }, [user, userType, shipmentId, router, toast]);
 
   const handleExporterSave = async () => {
-    if (!exporter || !shipment) return;
+    if (!shipment) return;
     setIsSavingExporter(true);
     try {
-        const exporterDocRef = doc(db, "users", shipment.exporterId);
-        await updateDoc(exporterDocRef, {
-            pocFullName: exporterPocFullName,
-            pocPhoneNumber: exporterPocPhoneNumber
+        const shipmentDocRef = doc(db, "shipments", shipment.id);
+        await updateDoc(shipmentDocRef, {
+            exporterPocFullName: exporterPocFullName,
+            exporterPocPhoneNumber: exporterPocPhoneNumber
         });
         toast({ title: "Success", description: "Exporter's contact details have been updated." });
     } catch (error) {
@@ -142,13 +125,14 @@ export default function ShipmentDocumentsPage() {
   };
   
   const handleVendorSave = async () => {
-      // Placeholder: Implement save logic here
-      if (!vendor || !shipment?.winningCarrierId) return;
+      if (!shipment) return;
       setIsSavingVendor(true);
       try {
-          // This will be implemented in a future step.
-          console.log("Saving vendor POC details:", { vendorPocFullName, vendorPocPhoneNumber });
-          await new Promise(res => setTimeout(res, 1000)); // Simulate async operation
+          const shipmentDocRef = doc(db, "shipments", shipment.id);
+          await updateDoc(shipmentDocRef, {
+            vendorPocFullName: vendorPocFullName,
+            vendorPocPhoneNumber: vendorPocPhoneNumber
+          });
           toast({ title: "Success", description: "Vendor's contact details have been updated." });
       } catch (error) {
           console.error("Error saving vendor POC details:", error);
@@ -213,7 +197,7 @@ export default function ShipmentDocumentsPage() {
                 <CardContent className="space-y-4 text-sm">
                     <div className="flex items-center gap-3 font-semibold">
                         <Building2 className="h-5 w-5 text-muted-foreground" />
-                        <span>{exporter?.companyDetails?.legalName || "Exporter Company Name"}</span>
+                        <span>{shipment?.exporterName || "Exporter Company Name"}</span>
                     </div>
                     <Separator />
                     <div className="space-y-4">
