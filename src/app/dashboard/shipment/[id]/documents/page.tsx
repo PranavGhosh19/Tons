@@ -31,8 +31,6 @@ export default function ShipmentDocumentsPage() {
   const [user, setUser] = useState<User | null>(null);
   const [userType, setUserType] = useState<string | null>(null);
   const [shipment, setShipment] = useState<DocumentData | null>(null);
-  const [exporterInfo, setExporterInfo] = useState<DocumentData | null>(null);
-  const [carrierInfo, setCarrierInfo] = useState<DocumentData | null>(null);
   const [loading, setLoading] = useState(true);
 
   const router = useRouter();
@@ -73,19 +71,6 @@ export default function ShipmentDocumentsPage() {
 
                 if (shipmentData.status === 'awarded' && (isOwner || isWinningCarrier || isEmployee)) {
                     setShipment({ id: docSnap.id, ...shipmentData });
-
-                    // Fetch exporter and carrier details
-                    const exporterDocRef = doc(db, 'users', shipmentData.exporterId);
-                    const carrierDocRef = doc(db, 'users', shipmentData.winningCarrierId);
-
-                    const [exporterDoc, carrierDoc] = await Promise.all([
-                        getDoc(exporterDocRef),
-                        getDoc(carrierDocRef)
-                    ]);
-
-                    if (exporterDoc.exists()) setExporterInfo(exporterDoc.data());
-                    if (carrierDoc.exists()) setCarrierInfo(carrierDoc.data());
-
                 } else {
                     toast({ title: "Unauthorized", description: "You don't have permission to view these documents.", variant: "destructive" });
                     router.push(`/dashboard`);
@@ -154,22 +139,18 @@ export default function ShipmentDocumentsPage() {
                     <CardTitle className="flex items-center gap-3"><Anchor className="text-primary"/>Exporter Info</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4 text-sm">
-                   {exporterInfo ? (
-                        <>
-                            <div className="flex items-center gap-3">
-                                <Building2 className="h-5 w-5 text-muted-foreground" />
-                                <span>{exporterInfo.companyDetails?.legalName || 'N/A'}</span>
-                            </div>
-                            <div className="flex items-center gap-3">
-                                <UserIcon className="h-5 w-5 text-muted-foreground" />
-                                <span>{exporterInfo.name || 'N/A'}</span>
-                            </div>
-                             <div className="flex items-center gap-3">
-                                <Mail className="h-5 w-5 text-muted-foreground" />
-                                <span>{exporterInfo.email || 'N/A'}</span>
-                            </div>
-                        </>
-                   ) : <InfoCardSkeleton />}
+                    <div className="flex items-center gap-3">
+                        <Building2 className="h-5 w-5 text-muted-foreground" />
+                        <span>Exporter Company Name</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <UserIcon className="h-5 w-5 text-muted-foreground" />
+                        <span>Exporter POC Name</span>
+                    </div>
+                     <div className="flex items-center gap-3">
+                        <Mail className="h-5 w-5 text-muted-foreground" />
+                        <span>exporter@example.com</span>
+                    </div>
                 </CardContent>
             </Card>
             <Card>
@@ -177,22 +158,18 @@ export default function ShipmentDocumentsPage() {
                     <CardTitle className="flex items-center gap-3"><Truck className="text-primary"/>Vendor Info</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4 text-sm">
-                   {carrierInfo ? (
-                        <>
-                            <div className="flex items-center gap-3">
-                                <Building2 className="h-5 w-5 text-muted-foreground" />
-                                <span>{carrierInfo.companyDetails?.legalName || 'N/A'}</span>
-                            </div>
-                            <div className="flex items-center gap-3">
-                                <UserIcon className="h-5 w-5 text-muted-foreground" />
-                                <span>{carrierInfo.name || 'N/A'}</span>
-                            </div>
-                             <div className="flex items-center gap-3">
-                                <Mail className="h-5 w-5 text-muted-foreground" />
-                                <span>{carrierInfo.email || 'N/A'}</span>
-                            </div>
-                        </>
-                   ) : <InfoCardSkeleton />}
+                    <div className="flex items-center gap-3">
+                        <Building2 className="h-5 w-5 text-muted-foreground" />
+                        <span>Vendor Company Name</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <UserIcon className="h-5 w-5 text-muted-foreground" />
+                        <span>Vendor POC Name</span>
+                    </div>
+                     <div className="flex items-center gap-3">
+                        <Mail className="h-5 w-5 text-muted-foreground" />
+                        <span>vendor@example.com</span>
+                    </div>
                 </CardContent>
             </Card>
         </div>
