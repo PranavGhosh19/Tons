@@ -71,6 +71,7 @@ export default function ShipmentDocumentsPage() {
     if (!user || !userType || !shipmentId) return;
 
     const fetchShipmentDetails = async () => {
+        setLoading(true);
         try {
             const shipmentDocRef = doc(db, "shipments", shipmentId);
             const docSnap = await getDoc(shipmentDocRef);
@@ -334,5 +335,3 @@ export default function ShipmentDocumentsPage() {
     </div>
   );
 }
-
-    
