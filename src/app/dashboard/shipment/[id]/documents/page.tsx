@@ -81,7 +81,7 @@ export default function ShipmentDocumentsPage() {
                         }
                     }
 
-                    // Fetch vendor (winning carrier) details
+                    // Fetch vendor (winning carrier) details - still needed for other info
                     if (shipmentData.winningCarrierId) {
                         const vendorDocRef = doc(db, "users", shipmentData.winningCarrierId);
                         const vendorDoc = await getDoc(vendorDocRef);
@@ -172,7 +172,7 @@ export default function ShipmentDocumentsPage() {
                 <CardContent className="space-y-4 text-sm">
                     <div className="flex items-center gap-3">
                         <Building2 className="h-5 w-5 text-muted-foreground" />
-                        <span>{vendor?.companyDetails?.legalName || "Vendor Company Name"}</span>
+                        <span>{shipment?.winningCarrierLegalName || "Vendor Company Name"}</span>
                     </div>
                 </CardContent>
             </Card>
