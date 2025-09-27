@@ -2,12 +2,6 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
-import { signInWithEmailAndPassword, onAuthStateChanged, User } from "firebase/auth";
-import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
-import { auth, db } from "@/lib/firebase";
-import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -15,132 +9,30 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { useToast } from "@/hooks/use-toast";
+import { Anchor, Truck } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useRouter } from "next/navigation";
 
-const EMPLOYEE_DOMAIN = "@shippingbattlefield.com";
-
-export default function LoginPage() {
-  const router = useRouter();
-  const { toast } = useToast();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-        if (user) {
-            router.push('/dashboard');
-        }
-    });
-    return () => unsubscribe();
-  }, [router]);
-
-  const handleLogin = async () => {
-    if (!email || !password) {
-      toast({
-        title: "Error",
-        description: "Please fill in all fields.",
-        variant: "destructive",
-      });
-      return;
-    }
-    setLoading(true);
-    try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
-      
-      const isEmployee = user.email && user.email.toLowerCase().endsWith(EMPLOYEE_DOMAIN);
-      
-      const userDocRef = doc(db, 'users', user.uid);
-      const userDoc = await getDoc(userDocRef);
-
-      if (isEmployee) {
-        if (!userDoc.exists() || userDoc.data()?.userType !== 'employee') {
-            await setDoc(userDocRef, { 
-                name: user.displayName || email.split('@')[0], 
-                email: user.email, 
-                userType: 'employee' 
-            }, { merge: true });
-        }
-      }
-
-      if (userDoc.exists() && userDoc.data()?.userType) {
-        router.push("/dashboard");
-      } else if (!isEmployee) {
-        router.push("/select-type");
-      } else {
-        router.push("/dashboard");
-      }
-      
-    } catch (error: any) {
-      toast({
-        title: "Login Failed",
-        description: "Invalid email or password.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
+export default function GeneralLoginPage() {
+    const router = useRouter();
   return (
     <div className="flex items-center justify-center py-12 px-4 bg-primary/10 min-h-[calc(100vh-152px)]">
       <Card className="mx-auto w-full max-w-md">
         <CardHeader className="text-center space-y-2">
-          <CardTitle className="text-3xl font-bold font-headline">Welcome Back</CardTitle>
+          <CardTitle className="text-3xl font-bold font-headline">Log In</CardTitle>
           <CardDescription>
-            Enter your credentials to access your account.
+            Are you an Exporter or a Carrier?
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="grid gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="email">Email Address</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="you@example.com"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                disabled={loading}
-                onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
-                className="bg-secondary"
-              />
-            </div>
-            <div className="grid gap-2">
-              <div className="flex items-center">
-                <Label htmlFor="password">Password</Label>
-                <Link
-                  href="#"
-                  className="ml-auto inline-block text-sm underline"
-                >
-                  Forgot your password?
-                </Link>
-              </div>
-              <Input
-                id="password"
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                disabled={loading}
-                onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
-                className="bg-secondary"
-              />
-            </div>
-            <Button onClick={handleLogin} disabled={loading} className="w-full h-12 mt-2 text-lg">
-              {loading ? 'Logging in...' : 'Log In'}
+        <CardContent className="grid gap-4">
+            <Button variant="outline" size="lg" className="h-20 text-lg" onClick={() => router.push('/login/exporter')}>
+                <Anchor className="mr-4 h-8 w-8" />
+                I'm an Exporter
             </Button>
-          </div>
-          <div className="mt-4 text-center text-sm">
-            Don&apos;t have an account?{" "}
-            <Link href="/signup" className="underline">
-              Sign up
-            </Link>
-          </div>
+            <Button variant="outline" size="lg" className="h-20 text-lg" onClick={() => router.push('/login/carrier')}>
+                <Truck className="mr-4 h-8 w-8" />
+                I'm a Carrier
+            </Button>
         </CardContent>
       </Card>
     </div>

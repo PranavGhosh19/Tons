@@ -59,13 +59,13 @@ export default function Home() {
             </div>
             <div className="flex flex-col gap-4 min-[400px]:flex-row justify-center">
                 <Button asChild size="lg" className="group bg-accent text-accent-foreground hover:bg-accent/90 shadow-lg transition-transform hover:scale-105">
-                    <Link href="/signup">
-                        Exporter Sign Up
+                    <Link href="/login/exporter">
+                        Exporter Portal
                         <ArrowRight className="inline-block w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
                     </Link>
                 </Button>
                 <Button asChild size="lg" variant="outline" className="shadow-lg transition-transform hover:scale-105">
-                    <Link href="/login">Carrier Portal</Link>
+                    <Link href="/login/carrier">Carrier Portal</Link>
                 </Button>
             </div>
             <Link href="/how-it-works" className="text-sm underline underline-offset-4 hover:text-primary">
