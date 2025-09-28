@@ -10,10 +10,11 @@ import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Mail, User as UserIcon, CheckCircle, XCircle } from "lucide-react";
+import { ArrowLeft, Mail, User as UserIcon, CheckCircle, XCircle, Clock, ShieldAlert } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { cn } from "@/lib/utils";
 
 const PageSkeleton = () => (
     <div className="container max-w-4xl py-6 md:py-10">
@@ -77,6 +78,22 @@ export default function UserProfilePage() {
 
         fetchUser();
     }, [userId, router, toast]);
+    
+    const getStatusInfo = (status: string | undefined): { text: string; icon: React.ElementType, variant: "success" | "secondary" | "destructive" | "outline" | "default" } => {
+        switch (status) {
+            case 'approved':
+                return { text: 'Approved', icon: CheckCircle, variant: 'success' };
+            case 'pending':
+                return { text: 'Pending', icon: Clock, variant: 'secondary' };
+            case 'rejected':
+                return { text: 'Rejected', icon: XCircle, variant: 'destructive' };
+            case 'unsubmitted':
+                 return { text: 'Unsubmitted', icon: ShieldAlert, variant: 'outline' };
+            default:
+                return { text: 'Unknown', icon: ShieldAlert, variant: 'outline' };
+        }
+    }
+
 
     if (loading) {
         return <PageSkeleton />;
@@ -85,6 +102,8 @@ export default function UserProfilePage() {
     if (!user) {
         return null; // Or a more specific "not found" component
     }
+
+    const statusInfo = getStatusInfo(user.verificationStatus);
 
     return (
         <div className="container max-w-4xl py-6 md:py-10">
@@ -120,30 +139,33 @@ export default function UserProfilePage() {
                         </CardHeader>
                         <CardContent className="space-y-6">
                             <div className="flex items-center justify-between">
-                                <span className="text-muted-foreground">GST Verified</span>
-                                {user.isGstVerified ? (
-                                    <div className="flex items-center gap-2 text-green-600">
-                                        <CheckCircle className="h-5 w-5" />
-                                        <span className="font-semibold">Verified</span>
-                                    </div>
-                                ) : (
-                                    <div className="flex items-center gap-2 text-red-600">
-                                        <XCircle className="h-5 w-5" />
-                                        <span className="font-semibold">Not Verified</span>
-                                    </div>
-                                )}
+                                <span className="text-muted-foreground">Verification Status</span>
+                                <Badge variant={statusInfo.variant} className="capitalize">
+                                    <statusInfo.icon className="mr-2 h-4 w-4" />
+                                    {statusInfo.text}
+                                </Badge>
                             </div>
-                            {user.isGstVerified && user.companyDetails && (
+                            
+                            {user.companyDetails && (
                                 <>
                                     <Separator />
                                     <div className="space-y-4">
                                         <h3 className="font-semibold">Company Information</h3>
-                                        <div className="text-sm space-y-2">
-                                            <p><strong className="text-muted-foreground">Legal Name:</strong> {user.companyDetails.legalName}</p>
-                                            <p><strong className="text-muted-foreground">Trade Name:</strong> {user.companyDetails.tradeName}</p>
-                                            <p><strong className="text-muted-foreground">Address:</strong> {user.companyDetails.address}</p>
-                                            <p><strong className="text-muted-foreground">GSTIN:</strong> {user.gstin}</p>
-                                        </div>
+                                        <dl className="text-sm space-y-2">
+                                            <div className="grid grid-cols-3 gap-4"><dt className="text-muted-foreground col-span-1">Legal Name</dt><dd className="col-span-2 font-medium">{user.companyDetails.legalName}</dd></div>
+                                            {user.companyDetails.tradeName && <div className="grid grid-cols-3 gap-4"><dt className="text-muted-foreground col-span-1">Trade Name</dt><dd className="col-span-2 font-medium">{user.companyDetails.tradeName}</dd></div>}
+                                            {user.companyDetails.address && <div className="grid grid-cols-3 gap-4"><dt className="text-muted-foreground col-span-1">Address</dt><dd className="col-span-2 font-medium">{user.companyDetails.address}</dd></div>}
+                                            <div className="grid grid-cols-3 gap-4"><dt className="text-muted-foreground col-span-1">GSTIN</dt><dd className="col-span-2 font-medium">{user.gstin}</dd></div>
+
+                                            {user.userType === 'exporter' && (
+                                                <>
+                                                    <div className="grid grid-cols-3 gap-4"><dt className="text-muted-foreground col-span-1">PAN</dt><dd className="col-span-2 font-medium">{user.companyDetails.pan}</dd></div>
+                                                    <div className="grid grid-cols-3 gap-4"><dt className="text-muted-foreground col-span-1">TAN</dt><dd className="col-span-2 font-medium">{user.companyDetails.tan || 'N/A'}</dd></div>
+                                                    <div className="grid grid-cols-3 gap-4"><dt className="text-muted-foreground col-span-1">IEC Code</dt><dd className="col-span-2 font-medium">{user.companyDetails.iecCode}</dd></div>
+                                                    <div className="grid grid-cols-3 gap-4"><dt className="text-muted-foreground col-span-1">AD Code</dt><dd className="col-span-2 font-medium">{user.companyDetails.adCode}</dd></div>
+                                                </>
+                                            )}
+                                        </dl>
                                     </div>
                                 </>
                             )}
