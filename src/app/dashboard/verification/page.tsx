@@ -7,7 +7,7 @@ import { onAuthStateChanged, User } from 'firebase/auth';
 import { doc, getDoc, collection, query, where, onSnapshot, DocumentData, updateDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { Skeleton } from "@/components/ui/skeleton";
-import { ShieldCheck, Check, X } from "lucide-react";
+import { ShieldCheck, Check, X, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -22,13 +22,22 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
 
 export default function VerificationPage() {
   const [user, setUser] = useState<User | null>(null);
   const [pendingUsers, setPendingUsers] = useState<DocumentData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedUser, setSelectedUser] = useState<DocumentData | null>(null);
   
   const router = useRouter();
   const { toast } = useToast();
@@ -81,6 +90,7 @@ export default function VerificationPage() {
               title: "Success",
               description: `User has been ${status}.`
           });
+          setSelectedUser(null);
       } catch (error) {
           console.error(`Error updating user status:`, error);
            toast({
@@ -100,6 +110,13 @@ export default function VerificationPage() {
         </div>
     );
   }
+  
+  const InfoRow = ({ label, value }: { label: string, value: string | undefined }) => (
+    <div className="flex justify-between border-b py-2">
+        <dt className="text-muted-foreground">{label}</dt>
+        <dd className="font-semibold text-right">{value || 'N/A'}</dd>
+    </div>
+  )
 
   return (
     <div className="container py-6 md:py-10">
@@ -132,45 +149,74 @@ export default function VerificationPage() {
                                         <TableCell>
                                             <Badge variant={pUser.userType === 'exporter' ? 'default' : 'secondary'} className="capitalize">{pUser.userType}</Badge>
                                         </TableCell>
-                                        <TableCell className="text-right space-x-2">
-                                            <AlertDialog>
-                                                <AlertDialogTrigger asChild>
-                                                    <Button variant="outline" size="sm" className="text-red-600 border-red-600 hover:bg-red-50 hover:text-red-700">
-                                                        <X className="mr-2 h-4 w-4" /> Deny
+                                        <TableCell className="text-right">
+                                            <Dialog onOpenChange={(open) => !open && setSelectedUser(null)}>
+                                                <DialogTrigger asChild>
+                                                    <Button variant="outline" size="sm" onClick={() => setSelectedUser(pUser)}>
+                                                        <Eye className="mr-2 h-4 w-4" /> View Details
                                                     </Button>
-                                                </AlertDialogTrigger>
-                                                <AlertDialogContent>
-                                                    <AlertDialogHeader>
-                                                        <AlertDialogTitle>Are you sure you want to deny this user?</AlertDialogTitle>
-                                                        <AlertDialogDescription>
-                                                          This action will mark the user's verification as 'rejected'. They will be notified but will not be able to use platform features until approved.
-                                                        </AlertDialogDescription>
-                                                    </AlertDialogHeader>
-                                                    <AlertDialogFooter>
-                                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                        <AlertDialogAction onClick={() => handleVerification(pUser.id, 'rejected')} className="bg-destructive hover:bg-destructive/90">Confirm Denial</AlertDialogAction>
-                                                    </AlertDialogFooter>
-                                                </AlertDialogContent>
-                                            </AlertDialog>
-                                             <AlertDialog>
-                                                <AlertDialogTrigger asChild>
-                                                    <Button size="sm" className="bg-green-600 hover:bg-green-700">
-                                                        <Check className="mr-2 h-4 w-4" /> Approve
-                                                    </Button>
-                                                </AlertDialogTrigger>
-                                                <AlertDialogContent>
-                                                    <AlertDialogHeader>
-                                                        <AlertDialogTitle>Are you sure you want to approve this user?</AlertDialogTitle>
-                                                        <AlertDialogDescription>
-                                                            Approving this user will grant them full access to the platform based on their role. This action can be reversed later if needed.
-                                                        </AlertDialogDescription>
-                                                    </AlertDialogHeader>
-                                                    <AlertDialogFooter>
-                                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                        <AlertDialogAction onClick={() => handleVerification(pUser.id, 'approved')}>Confirm Approval</AlertDialogAction>
-                                                    </AlertDialogFooter>
-                                                </AlertDialogContent>
-                                            </AlertDialog>
+                                                </DialogTrigger>
+                                                <DialogContent className="sm:max-w-xl">
+                                                    <DialogHeader>
+                                                        <DialogTitle>Verification Details</DialogTitle>
+                                                        <DialogDescription>
+                                                            Review the information submitted by {selectedUser?.name}.
+                                                        </DialogDescription>
+                                                    </DialogHeader>
+                                                    {selectedUser?.companyDetails ? (
+                                                        <div className="py-4 space-y-2">
+                                                            <dl className="space-y-2">
+                                                                <InfoRow label="Legal Name" value={selectedUser.companyDetails.legalName} />
+                                                                <InfoRow label="GST" value={selectedUser.companyDetails.gstin} />
+                                                                <InfoRow label="PAN" value={selectedUser.companyDetails.pan} />
+                                                                <InfoRow label="TAN" value={selectedUser.companyDetails.tan} />
+                                                                <InfoRow label="IEC Code" value={selectedUser.companyDetails.iecCode} />
+                                                                <InfoRow label="AD Code" value={selectedUser.companyDetails.adCode} />
+                                                            </dl>
+                                                        </div>
+                                                    ) : <p className="py-4 text-muted-foreground">No company details submitted.</p>}
+                                                    <DialogFooter>
+                                                        <AlertDialog>
+                                                            <AlertDialogTrigger asChild>
+                                                                <Button variant="destructive">
+                                                                    <X className="mr-2 h-4 w-4" /> Deny
+                                                                </Button>
+                                                            </AlertDialogTrigger>
+                                                            <AlertDialogContent>
+                                                                <AlertDialogHeader>
+                                                                    <AlertDialogTitle>Are you sure you want to deny this user?</AlertDialogTitle>
+                                                                    <AlertDialogDescription>
+                                                                        This action will mark the user's verification as 'rejected'. They will be notified but will not be able to use platform features until approved.
+                                                                    </AlertDialogDescription>
+                                                                </AlertDialogHeader>
+                                                                <AlertDialogFooter>
+                                                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                                    <AlertDialogAction onClick={() => handleVerification(pUser.id, 'rejected')} className="bg-destructive hover:bg-destructive/90">Confirm Denial</AlertDialogAction>
+                                                                </AlertDialogFooter>
+                                                            </AlertDialogContent>
+                                                        </AlertDialog>
+                                                        <AlertDialog>
+                                                            <AlertDialogTrigger asChild>
+                                                                <Button className="bg-green-600 hover:bg-green-700">
+                                                                    <Check className="mr-2 h-4 w-4" /> Approve
+                                                                </Button>
+                                                            </AlertDialogTrigger>
+                                                            <AlertDialogContent>
+                                                                <AlertDialogHeader>
+                                                                    <AlertDialogTitle>Are you sure you want to approve this user?</AlertDialogTitle>
+                                                                    <AlertDialogDescription>
+                                                                        Approving this user will grant them full access to the platform based on their role. This action can be reversed later if needed.
+                                                                    </AlertDialogDescription>
+                                                                </AlertDialogHeader>
+                                                                <AlertDialogFooter>
+                                                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                                    <AlertDialogAction onClick={() => handleVerification(pUser.id, 'approved')}>Confirm Approval</AlertDialogAction>
+                                                                </AlertDialogFooter>
+                                                            </AlertDialogContent>
+                                                        </AlertDialog>
+                                                    </DialogFooter>
+                                                </DialogContent>
+                                            </Dialog>
                                         </TableCell>
                                     </TableRow>
                                 ))}
