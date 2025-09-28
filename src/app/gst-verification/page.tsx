@@ -55,7 +55,7 @@ export default function GstVerificationPage() {
         const userDoc = await getDoc(userDocRef);
         if (userDoc.exists()) {
           const data = userDoc.data();
-          if (data.isGstVerified) {
+          if (data.verificationStatus && data.verificationStatus !== 'unsubmitted') {
             router.push('/dashboard');
           } else {
             setUserType(data.userType);
@@ -96,6 +96,7 @@ export default function GstVerificationPage() {
         await updateDoc(userDocRef, {
             gstin: gstin.toUpperCase(),
             isGstVerified: true,
+            verificationStatus: 'approved', // Carriers are auto-approved for now
             companyDetails: verifiedData,
         });
         router.push("/dashboard");

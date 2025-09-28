@@ -47,7 +47,7 @@ export default function ExporterSignupPage() {
         name: name,
         email: email,
         userType: 'exporter',
-        isGstVerified: false,
+        verificationStatus: 'unsubmitted',
       });
       
       router.push("/gst-verification");

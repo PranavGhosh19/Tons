@@ -29,11 +29,11 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { PlusCircle, Send, Pencil, Clock } from "lucide-react";
+import { PlusCircle, Send, Pencil, Clock, ShieldAlert } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Textarea } from "@/components/ui/textarea";
@@ -102,6 +102,7 @@ export default function ExporterDashboardPageWrapper() {
 
 function ExporterDashboardPage() {
   const [user, setUser] = useState<User | null>(null);
+  const [userData, setUserData] = useState<DocumentData | null>(null);
   const [products, setProducts] = useState<DocumentData[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
@@ -171,10 +172,16 @@ function ExporterDashboardPage() {
       if (currentUser) {
         const userDocRef = doc(db, 'users', currentUser.uid);
         const userDoc = await getDoc(userDocRef);
-        if (userDoc.exists() && userDoc.data()?.userType === 'exporter') {
-           setUser(currentUser);
+        if (userDoc.exists()) {
+          const uData = userDoc.data();
+          if (uData.userType === 'exporter') {
+            setUser(currentUser);
+            setUserData(uData);
+          } else {
+             router.push('/dashboard');
+          }
         } else {
-            router.push('/dashboard');
+           router.push('/login');
         }
       } else {
         router.push('/login');
@@ -208,9 +215,13 @@ function ExporterDashboardPage() {
 
   useEffect(() => {
     if (user) {
-      fetchProducts(user.uid);
+      if (userData?.verificationStatus === 'approved') {
+        fetchProducts(user.uid);
+      } else {
+        setLoading(false);
+      }
     }
-  }, [user, fetchProducts]);
+  }, [user, userData, fetchProducts]);
 
   useEffect(() => {
     const editId = searchParams.get('edit');
@@ -402,9 +413,40 @@ function ExporterDashboardPage() {
     }
   }
 
+  const VerificationStatus = () => {
+    const status = userData?.verificationStatus;
+    if (status === 'pending') {
+        return (
+            <Card className="bg-yellow-50 border-yellow-400">
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-3"><ShieldAlert className="text-yellow-600"/>Verification Pending</CardTitle>
+                    <CardDescription>
+                        Your business details are currently under review. You will be notified once the verification is complete. You can create and save draft shipments, but you cannot schedule them to go live yet.
+                    </CardDescription>
+                </CardHeader>
+            </Card>
+        )
+    }
+    if (status === 'rejected') {
+         return (
+            <Card className="bg-red-50 border-red-400">
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-3"><ShieldAlert className="text-red-600"/>Verification Denied</CardTitle>
+                    <CardDescription>
+                       Your verification request was not approved. Please review your details in Settings and contact support if you believe this is an error.
+                    </CardDescription>
+                </CardHeader>
+            </Card>
+        )
+    }
+    return null;
+  }
+
   if (loading || !user) {
     return <PageSkeleton />;
   }
+
+  const isApproved = userData?.verificationStatus === 'approved';
 
   const getStatusVariant = (status: string) => {
     switch (status) {
@@ -424,191 +466,195 @@ function ExporterDashboardPage() {
     <div className="container py-6 md:py-10">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
         <h1 className="text-2xl sm:text-3xl font-bold font-headline">My Shipments</h1>
-        <Dialog open={open} onOpenChange={handleOpenChange}>
-          <DialogTrigger asChild>
-            <Button onClick={() => setOpen(true)} className="w-full sm:w-auto">
-              <PlusCircle className="mr-2 h-4 w-4" /> New Shipment Request
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle className="text-2xl font-headline">{editingShipmentId ? 'Edit Shipment' : 'New Shipment'}</DialogTitle>
-              <DialogDescription>
-                Fill out the form below to create or update your shipment request.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-6 py-4">
-              <Card className="bg-secondary">
-                <CardHeader><CardTitle>Product & Cargo Details</CardTitle></CardHeader>
-                <CardContent className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  <div className="grid gap-2 lg:col-span-3">
-                    <Label htmlFor="shipment-type">Shipment</Label>
-                    <Select value={shipmentType} onValueChange={setShipmentType} disabled={isSubmitting}>
-                      <SelectTrigger id="shipment-type">
-                        <SelectValue placeholder="Select shipment type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="EXPORT">EXPORT</SelectItem>
-                        <SelectItem value="IMPORT">IMPORT</SelectItem>
-                        <SelectItem value="COASTAL MOVEMENT">COASTAL MOVEMENT</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="product-name">Product Name</Label>
-                    <Input id="product-name" placeholder="e.g., Electronics, Textiles" value={productName} onChange={e => setProductName(e.target.value)} disabled={isSubmitting} />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="hsn-code">HSN Code</Label>
-                    <Input id="hsn-code" placeholder="e.g., 85171290" value={hsnCode} onChange={e => setHsnCode(e.target.value)} disabled={isSubmitting} />
-                  </div>
-                   <div className="grid gap-2">
-                    <Label htmlFor="mode-of-shipment">Mode of Shipment</Label>
-                    <Select value={modeOfShipment} onValueChange={setModeOfShipment} disabled={isSubmitting}>
-                      <SelectTrigger id="mode-of-shipment">
-                        <SelectValue placeholder="Select a mode" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Air">Air</SelectItem>
-                        <SelectItem value="Full Container Load">Full Container Load</SelectItem>
-                        <SelectItem value="Less than Container Load">Less than Container Load</SelectItem>
-                        <SelectItem value="Break Bulk">Break Bulk</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="cargo-type">Cargo Type</Label>
-                    <Select value={cargoType} onValueChange={setCargoType} disabled={isSubmitting || !modeOfShipment}>
-                      <SelectTrigger id="cargo-type">
-                        <SelectValue placeholder="Select a cargo type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {cargoTypeOptions.map((option) => (
-                           <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="package-type">Package Type</Label>
-                    <Select value={packageType} onValueChange={setPackageType} disabled={isSubmitting}>
-                      <SelectTrigger id="package-type">
-                        <SelectValue placeholder="Select a package type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {packageTypes.map((option) => (
-                           <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="weight">Total Weight</Label>
-                    <div className="flex items-center">
-                        <Input id="weight" type="number" placeholder="e.g., 1200" value={weight} onChange={e => setWeight(e.target.value)} disabled={isSubmitting} className="rounded-r-none" />
-                        <span className="bg-muted text-muted-foreground px-3 py-2 border border-l-0 rounded-r-md">kg</span>
-                    </div>
-                  </div>
-                   {showDimensions && (
+        {isApproved && (
+          <Dialog open={open} onOpenChange={handleOpenChange}>
+            <DialogTrigger asChild>
+              <Button onClick={() => setOpen(true)} className="w-full sm:w-auto">
+                <PlusCircle className="mr-2 h-4 w-4" /> New Shipment Request
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle className="text-2xl font-headline">{editingShipmentId ? 'Edit Shipment' : 'New Shipment'}</DialogTitle>
+                <DialogDescription>
+                  Fill out the form below to create or update your shipment request.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-6 py-4">
+                <Card className="bg-secondary">
+                  <CardHeader><CardTitle>Product & Cargo Details</CardTitle></CardHeader>
+                  <CardContent className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                     <div className="grid gap-2 lg:col-span-3">
-                      <Label>Dimensions (L x W x H)</Label>
-                      <div className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2">
-                          <Input placeholder="Length" value={dimensionL} onChange={e => setDimensionL(e.target.value)} disabled={isSubmitting} />
-                          <Input placeholder="Width" value={dimensionW} onChange={e => setDimensionW(e.target.value)} disabled={isSubmitting} />
-                          <Input placeholder="Height" value={dimensionH} onChange={e => setDimensionH(e.target.value)} disabled={isSubmitting} />
-                          <Select value={dimensionUnit} onValueChange={setDimensionUnit} disabled={isSubmitting}>
-                            <SelectTrigger>
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="CMS">CMS</SelectItem>
-                                <SelectItem value="FEET">FEET</SelectItem>
-                                <SelectItem value="MM">MM</SelectItem>
-                                <SelectItem value="METRE">METRE</SelectItem>
-                            </SelectContent>
-                          </Select>
+                      <Label htmlFor="shipment-type">Shipment</Label>
+                      <Select value={shipmentType} onValueChange={setShipmentType} disabled={isSubmitting}>
+                        <SelectTrigger id="shipment-type">
+                          <SelectValue placeholder="Select shipment type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="EXPORT">EXPORT</SelectItem>
+                          <SelectItem value="IMPORT">IMPORT</SelectItem>
+                          <SelectItem value="COASTAL MOVEMENT">COASTAL MOVEMENT</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="product-name">Product Name</Label>
+                      <Input id="product-name" placeholder="e.g., Electronics, Textiles" value={productName} onChange={e => setProductName(e.target.value)} disabled={isSubmitting} />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="hsn-code">HSN Code</Label>
+                      <Input id="hsn-code" placeholder="e.g., 85171290" value={hsnCode} onChange={e => setHsnCode(e.target.value)} disabled={isSubmitting} />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="mode-of-shipment">Mode of Shipment</Label>
+                      <Select value={modeOfShipment} onValueChange={setModeOfShipment} disabled={isSubmitting}>
+                        <SelectTrigger id="mode-of-shipment">
+                          <SelectValue placeholder="Select a mode" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Air">Air</SelectItem>
+                          <SelectItem value="Full Container Load">Full Container Load</SelectItem>
+                          <SelectItem value="Less than Container Load">Less than Container Load</SelectItem>
+                          <SelectItem value="Break Bulk">Break Bulk</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="cargo-type">Cargo Type</Label>
+                      <Select value={cargoType} onValueChange={setCargoType} disabled={isSubmitting || !modeOfShipment}>
+                        <SelectTrigger id="cargo-type">
+                          <SelectValue placeholder="Select a cargo type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {cargoTypeOptions.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="package-type">Package Type</Label>
+                      <Select value={packageType} onValueChange={setPackageType} disabled={isSubmitting}>
+                        <SelectTrigger id="package-type">
+                          <SelectValue placeholder="Select a package type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {packageTypes.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="weight">Total Weight</Label>
+                      <div className="flex items-center">
+                          <Input id="weight" type="number" placeholder="e.g., 1200" value={weight} onChange={e => setWeight(e.target.value)} disabled={isSubmitting} className="rounded-r-none" />
+                          <span className="bg-muted text-muted-foreground px-3 py-2 border border-l-0 rounded-r-md">kg</span>
                       </div>
                     </div>
-                   )}
-                </CardContent>
-              </Card>
+                    {showDimensions && (
+                      <div className="grid gap-2 lg:col-span-3">
+                        <Label>Dimensions (L x W x H)</Label>
+                        <div className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2">
+                            <Input placeholder="Length" value={dimensionL} onChange={e => setDimensionL(e.target.value)} disabled={isSubmitting} />
+                            <Input placeholder="Width" value={dimensionW} onChange={e => setDimensionW(e.target.value)} disabled={isSubmitting} />
+                            <Input placeholder="Height" value={dimensionH} onChange={e => setDimensionH(e.target.value)} disabled={isSubmitting} />
+                            <Select value={dimensionUnit} onValueChange={setDimensionUnit} disabled={isSubmitting}>
+                              <SelectTrigger>
+                                  <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                  <SelectItem value="CMS">CMS</SelectItem>
+                                  <SelectItem value="FEET">FEET</SelectItem>
+                                  <SelectItem value="MM">MM</SelectItem>
+                                  <SelectItem value="METRE">METRE</SelectItem>
+                              </SelectContent>
+                            </Select>
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
 
-              <Card className="bg-secondary">
-                  <CardHeader><CardTitle>Scheduling</CardTitle></CardHeader>
-                  <CardContent className="grid md:grid-cols-2 gap-6">
-                    <div className="grid gap-2">
-                        <Label>Preferred Departure Date</Label>
-                        <DateTimePicker 
-                            date={departureDate}
-                            setDate={setDepartureDate}
-                            disabled={isSubmitting}
-                            disabledDates={(date) => date < new Date(new Date().setHours(0,0,0,0))}
-                        />
-                    </div>
-                    <div className="grid gap-2">
-                        <Label>Delivery Deadline</Label>
-                        <DateTimePicker 
-                            date={deliveryDeadline}
-                            setDate={setDeliveryDeadline}
-                            disabled={isSubmitting || !departureDate}
-                            disabledDates={(date) => departureDate ? date < departureDate : date < new Date(new Date().setHours(0,0,0,0))}
-                        />
-                    </div>
-                  </CardContent>
-              </Card>
-              
-              <div className="grid md:grid-cols-2 gap-6">
-                  <Card className="bg-secondary">
-                      <CardHeader><CardTitle>Origin</CardTitle></CardHeader>
-                      <CardContent className="grid gap-6">
-                          <div className="grid gap-2">
-                              <Label htmlFor="port-of-loading">Port of Loading</Label>
-                              <Input id="port-of-loading" placeholder="e.g., Port of Hamburg" value={portOfLoading} onChange={e => setPortOfLoading(e.target.value)} disabled={isSubmitting} />
-                          </div>
-                          <div className="grid gap-2">
-                              <Label htmlFor="origin-zip">Pin / Zip Code</Label>
-                              <Input id="origin-zip" placeholder="e.g., 20457" value={originZip} onChange={e => setOriginZip(e.target.value)} disabled={isSubmitting} />
-                          </div>
-                      </CardContent>
-                  </Card>
-                  <Card className="bg-secondary">
-                      <CardHeader><CardTitle>Destination</CardTitle></CardHeader>
-                      <CardContent className="grid gap-6">
-                          <div className="grid gap-2">
-                              <Label htmlFor="port-of-delivery">Port of Delivery</Label>
-                              <Input id="port-of-delivery" placeholder="e.g., Port of Shanghai" value={portOfDelivery} onChange={e => setPortOfDelivery(e.target.value)} disabled={isSubmitting} />
-                          </div>
-                          <div className="grid gap-2">
-                              <Label htmlFor="destination-zip">Pin / Zip Code</Label>
-                              <Input id="destination-zip" placeholder="e.g., 200000" value={destinationZip} onChange={e => setDestinationZip(e.target.value)} disabled={isSubmitting} />
-                          </div>
-                      </CardContent>
-                  </Card>
-              </div>
-            
-              <Card className="bg-secondary">
-                  <CardHeader><CardTitle>Additional Information</CardTitle></CardHeader>
-                  <CardContent>
+                <Card className="bg-secondary">
+                    <CardHeader><CardTitle>Scheduling</CardTitle></CardHeader>
+                    <CardContent className="grid md:grid-cols-2 gap-6">
                       <div className="grid gap-2">
-                          <Label htmlFor="special-instructions">Special Instructions</Label>
-                          <Textarea id="special-instructions" placeholder="e.g., Handle with care, keep refrigerated below 5°C." value={specialInstructions} onChange={e => setSpecialInstructions(e.target.value)} disabled={isSubmitting} />
+                          <Label>Preferred Departure Date</Label>
+                          <DateTimePicker 
+                              date={departureDate}
+                              setDate={setDepartureDate}
+                              disabled={isSubmitting}
+                              disabledDates={(date) => date < new Date(new Date().setHours(0,0,0,0))}
+                          />
                       </div>
-                  </CardContent>
-              </Card>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={handleOpenScheduleDialog} disabled={isSubmitting} className="w-full sm:w-auto">
-                  <Clock className="mr-2 h-4 w-4" />
-                  Schedule
-              </Button>
-              <Button type="submit" onClick={() => handleSubmit('draft')} disabled={isSubmitting} className="w-full sm:w-auto">
-                {editingShipmentId ? <Pencil className="mr-2 h-4 w-4" /> : <Send className="mr-2 h-4 w-4" />}
-                {isSubmitting ? 'Saving...' : (editingShipmentId ? 'Save Changes' : 'Submit as Draft')}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+                      <div className="grid gap-2">
+                          <Label>Delivery Deadline</Label>
+                          <DateTimePicker 
+                              date={deliveryDeadline}
+                              setDate={setDeliveryDeadline}
+                              disabled={isSubmitting || !departureDate}
+                              disabledDates={(date) => departureDate ? date < departureDate : date < new Date(new Date().setHours(0,0,0,0))}
+                          />
+                      </div>
+                    </CardContent>
+                </Card>
+                
+                <div className="grid md:grid-cols-2 gap-6">
+                    <Card className="bg-secondary">
+                        <CardHeader><CardTitle>Origin</CardTitle></CardHeader>
+                        <CardContent className="grid gap-6">
+                            <div className="grid gap-2">
+                                <Label htmlFor="port-of-loading">Port of Loading</Label>
+                                <Input id="port-of-loading" placeholder="e.g., Port of Hamburg" value={portOfLoading} onChange={e => setPortOfLoading(e.target.value)} disabled={isSubmitting} />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="origin-zip">Pin / Zip Code</Label>
+                                <Input id="origin-zip" placeholder="e.g., 20457" value={originZip} onChange={e => setOriginZip(e.target.value)} disabled={isSubmitting} />
+                            </div>
+                        </CardContent>
+                    </Card>
+                    <Card className="bg-secondary">
+                        <CardHeader><CardTitle>Destination</CardTitle></CardHeader>
+                        <CardContent className="grid gap-6">
+                            <div className="grid gap-2">
+                                <Label htmlFor="port-of-delivery">Port of Delivery</Label>
+                                <Input id="port-of-delivery" placeholder="e.g., Port of Shanghai" value={portOfDelivery} onChange={e => setPortOfDelivery(e.target.value)} disabled={isSubmitting} />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="destination-zip">Pin / Zip Code</Label>
+                                <Input id="destination-zip" placeholder="e.g., 200000" value={destinationZip} onChange={e => setDestinationZip(e.target.value)} disabled={isSubmitting} />
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+              
+                <Card className="bg-secondary">
+                    <CardHeader><CardTitle>Additional Information</CardTitle></CardHeader>
+                    <CardContent>
+                        <div className="grid gap-2">
+                            <Label htmlFor="special-instructions">Special Instructions</Label>
+                            <Textarea id="special-instructions" placeholder="e.g., Handle with care, keep refrigerated below 5°C." value={specialInstructions} onChange={e => setSpecialInstructions(e.target.value)} disabled={isSubmitting} />
+                        </div>
+                    </CardContent>
+                </Card>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={handleOpenScheduleDialog} disabled={isSubmitting} className="w-full sm:w-auto">
+                    <Clock className="mr-2 h-4 w-4" />
+                    Schedule
+                </Button>
+                <Button type="submit" onClick={() => handleSubmit('draft')} disabled={isSubmitting} className="w-full sm:w-auto">
+                  {editingShipmentId ? <Pencil className="mr-2 h-4 w-4" /> : <Send className="mr-2 h-4 w-4" />}
+                  {isSubmitting ? 'Saving...' : (editingShipmentId ? 'Save Changes' : 'Submit as Draft')}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
+      
+      {!isApproved && <div className="mb-8"><VerificationStatus /></div>}
       
       <AlertDialog open={isScheduleDialogOpen} onOpenChange={setIsScheduleDialogOpen}>
         <AlertDialogContent>
@@ -666,10 +712,12 @@ function ExporterDashboardPage() {
           </Table>
         </div>
       ) : (
-        <div className="border rounded-lg p-12 text-center bg-card dark:bg-card">
-          <h2 className="text-xl font-semibold mb-2">No shipment requests yet</h2>
-          <p className="text-muted-foreground">Click "New Shipment Request" to get started.</p>
-        </div>
+        isApproved && (
+          <div className="border rounded-lg p-12 text-center bg-card dark:bg-card">
+            <h2 className="text-xl font-semibold mb-2">No shipment requests yet</h2>
+            <p className="text-muted-foreground">Click "New Shipment Request" to get started.</p>
+          </div>
+        )
       )}
     </div>
   );

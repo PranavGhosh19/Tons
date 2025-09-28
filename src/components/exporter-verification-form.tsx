@@ -60,10 +60,10 @@ export function ExporterVerificationForm({ user }: ExporterVerificationFormProps
                     adCode,
                 },
                 gstin: gst, // Keep gstin at top level for compatibility
-                isGstVerified: true, // Mark as verified
+                verificationStatus: 'pending', // Set status to pending
             });
 
-            toast({ title: "Verification Submitted", description: "Your business details have been saved." });
+            toast({ title: "Verification Submitted", description: "Your business details have been submitted for review." });
             router.push("/dashboard");
 
         } catch (error) {
