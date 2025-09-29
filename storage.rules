@@ -2,24 +2,42 @@ rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-    // Rules for Exporter Verification Documents
-    match /verification-documents/{userId}/{fileName} {
-      // Allow write (upload) only if the user is authenticated and the `userId` in the path
-      // matches the UID of the user making the request.
-      // Also, restrict file size to 5MB and to specific image/pdf types.
-      allow write: if request.auth != null && request.auth.uid == userId
-                    && request.resource.size < 5 * 1024 * 1024
-                    && request.resource.contentType.matches('image/.*|application/pdf');
 
-      // Allow read only by the user who uploaded them.
-      // This can be expanded later to allow employees to read for verification.
-      allow read: if request.auth != null && request.auth.uid == userId;
+    // ───── Verification Documents ─────
+    // These are documents uploaded by users during the onboarding/verification process.
+    match /verification-documents/{userId}/{allPaths=**} {
+      
+      // READ: Allow the owner of the document OR an employee to read.
+      allow read: if request.auth != null && 
+                  (request.auth.uid == userId || get(/databases/(default)/documents/users/$(request.auth.uid)).data.userType == 'employee');
+      
+      // WRITE: Only allow the owner to write/upload to their own folder.
+      allow write: if request.auth != null && request.auth.uid == userId;
     }
 
-    // Default rule for any other paths (if necessary in the future)
-    // Be cautious with broad rules like this in production.
+    // ───── Shipment-Specific Documents ─────
+    // These are documents uploaded after a shipment has been awarded.
+    match /shipments/{shipmentId}/{allPaths=**} {
+      
+      // Helper function to check if the user is a party to the awarded shipment.
+      function isAwardedParty() {
+          let shipment = get(/databases/(default)/documents/shipments/$(shipmentId)).data;
+          return shipment.status == 'awarded' && 
+                 (shipment.exporterId == request.auth.uid || shipment.winningCarrierId == request.auth.uid);
+      }
+      
+      // Helper function to check if the user is an employee.
+      function isEmployee() {
+          return get(/databases/(default)/documents/users/$(request.auth.uid)).data.userType == 'employee';
+      }
+
+      // READ/WRITE: Allow if the user is an employee OR a party to the awarded shipment.
+      allow read, write: if request.auth != null && (isEmployee() || isAwardedParty());
+    }
+
+    // ───── Default Deny Rule ─────
+    // Explicitly deny all other access to prevent unauthorized file operations.
     match /{allPaths=**} {
-      // Deny read/write by default to all other paths unless specified above.
       allow read, write: if false;
     }
   }
