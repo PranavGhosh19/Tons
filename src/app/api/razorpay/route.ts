@@ -1,12 +1,11 @@
 
 import { NextResponse } from "next/server";
 import Razorpay from "razorpay";
-import { ai } from "@/ai/genkit"; // Use the global AI instance
 
 const corsHeaders = {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    "Access-control-allow-headers": "Content-Type, Authorization",
 };
 
 export async function OPTIONS() {
@@ -21,9 +20,8 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: "Amount and currency are required" }, { status: 400, headers: corsHeaders });
         }
 
-        // Correctly access secrets using the global `ai` object
-        const key_id = ai.config.NEXT_PUBLIC_RAZORPAY_KEY_ID || "rzp_test_YOUR_KEY_ID";
-        const key_secret = ai.config.RAZORPAY_KEY_SECRET || "YOUR_KEY_SECRET";
+        const key_id = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "rzp_test_YOUR_KEY_ID";
+        const key_secret = process.env.RAZORPAY_KEY_SECRET || "YOUR_KEY_SECRET";
 
         if (key_id === "rzp_test_YOUR_KEY_ID" || key_secret === "YOUR_KEY_SECRET") {
              console.warn("Razorpay keys are not set in environment variables. Using placeholder keys.");
@@ -47,7 +45,6 @@ export async function POST(request: Request) {
 
     } catch (error) {
         console.error("Error creating Razorpay order:", error);
-        // It's better to return a structured error message
         const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
         return NextResponse.json({ error: "Failed to create Razorpay order", details: errorMessage }, { status: 500, headers: corsHeaders });
     }
