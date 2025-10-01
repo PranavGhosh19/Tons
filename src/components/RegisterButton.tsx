@@ -5,29 +5,10 @@ import React, { useEffect, useState } from 'react';
 import { doc, getDoc, setDoc, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
-import { Check, Wallet } from 'lucide-react';
+import { Check } from 'lucide-react';
 import type { User } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from './ui/skeleton';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
-import { Checkbox } from './ui/checkbox';
-import { Label } from './ui/label';
-
-declare global {
-    interface Window {
-      Razorpay: any;
-    }
-}
 
 interface RegisterButtonProps {
   shipmentId: string;
@@ -76,8 +57,6 @@ export const RegisterButton: React.FC<RegisterButtonProps> = ({ shipmentId, user
         await setDoc(registerDocRef, {
             carrierId: user.uid,
             registeredAt: Timestamp.now(),
-            paymentId: 'blocked_for_now',
-            orderId: 'blocked_for_now',
         });
         setIsRegistered(true);
         toast({ title: "Success", description: "You have registered your interest for this shipment." });

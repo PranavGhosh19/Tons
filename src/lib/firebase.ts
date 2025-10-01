@@ -4,13 +4,12 @@ import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyCCgvXgIEWoueN6dkqn1P4AcVWt_G_QSVw",
-  authDomain: "shipping-battlefield.firebaseapp.com",
-  databaseURL: "https://shipping-battlefield-default-rtdb.firebaseio.com",
-  projectId: "shipping-battlefield",
-  storageBucket: "shipping-battlefield.appspot.com",
-  messagingSenderId: "154914599500",
-  appId: "1:154914599500:web:2c3ea470544b4cc5433ae9"
+  apiKey: "AIzaSyC3m0jvG-VnQDeLOuAKPPquhW-8Vnhgywg",
+  authDomain: "cargoflow-j35du.firebaseapp.com",
+  projectId: "cargoflow-j35du",
+  storageBucket: "cargoflow-j35du.firebasestorage.app",
+  messagingSenderId: "866863583313",
+  appId: "1:866863583313:web:8164df2f5bfab9aa7b6870"
 };
 
 // Initialize Firebase

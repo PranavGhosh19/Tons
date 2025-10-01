@@ -3,7 +3,6 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { ThemeProvider } from "@/components/theme-provider";
-import Script from "next/script";
 import { Poppins, PT_Sans } from 'next/font/google';
 import { AppProviders } from "@/components/app-providers";
 
@@ -34,10 +33,6 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning className={`${fontPoppins.variable} ${fontPtSans.variable}`}>
       <head>
-         <Script
-            id="razorpay-checkout-js"
-            src="https://checkout.razorpay.com/v1/checkout.js"
-        />
       </head>
       <body className="min-h-screen bg-background font-body antialiased">
         <ThemeProvider
