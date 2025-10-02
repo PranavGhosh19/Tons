@@ -30,7 +30,13 @@ export default function EmployeeLoginPage() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
-        router.push('/dashboard/employee');
+        // Check if the logged-in user is an employee before redirecting
+        const userDocRef = doc(db, 'users', user.uid);
+        getDoc(userDocRef).then(userDoc => {
+          if(userDoc.exists() && userDoc.data()?.userType === 'employee') {
+            router.push('/dashboard/employee');
+          }
+        });
       }
     });
     return () => unsubscribe();
@@ -50,7 +56,10 @@ export default function EmployeeLoginPage() {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      if (user.email?.endsWith('@shippingbattlefield.com')) {
+      const userDocRef = doc(db, 'users', user.uid);
+      const userDoc = await getDoc(userDocRef);
+
+      if (userDoc.exists() && userDoc.data()?.userType === 'employee') {
           router.push("/dashboard/employee");
       } else {
           await auth.signOut();
