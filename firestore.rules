@@ -14,7 +14,7 @@ service cloud.firestore {
 
     // Employees are recognized only by company email domain
     function isEmployee() {
-      return request.auth.token.email_verified && request.auth.token.email.matches('.*@shippingbattlefield\\.com$');
+      return request.auth.token.email.matches('.*@shippingbattlefield\\.com$');
     }
 
     function getShipment(shipmentId) {
@@ -32,8 +32,10 @@ service cloud.firestore {
 
     // ───── Users Collection ─────
     match /users/{userId} {
-      // Any authenticated user can read user profiles. isEmployee() can read all.
-      allow read: if request.auth.uid != null;
+      // Employees can read all users; others can only read their own
+      allow read: if request.auth.uid != null && (
+        isEmployee() || request.auth.uid == userId
+      );
 
       // Allow user to create their own document
       allow create: if request.auth.uid == userId &&
@@ -41,8 +43,8 @@ service cloud.firestore {
 
       // Allow updates with constraints
       allow update: if request.auth.uid != null && (
-        // Employees can update anyone's verification status
-        (isEmployee() && request.resource.data.keys().hasAny(['verificationStatus'])) ||
+        // Employees can update anyone
+        isEmployee() ||
 
         // Users can only update themselves
         (request.auth.uid == userId && (

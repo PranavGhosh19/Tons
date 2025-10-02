@@ -30,7 +30,7 @@ export default function EmployeeLoginPage() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
-        router.push('/dashboard');
+        router.push('/dashboard/employee');
       }
     });
     return () => unsubscribe();
@@ -50,11 +50,8 @@ export default function EmployeeLoginPage() {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // The security rules now handle auth based on email domain,
-      // so we just need to redirect to the dashboard.
-      // The dashboard redirect page will handle routing to the correct employee page.
       if (user.email?.endsWith('@shippingbattlefield.com')) {
-          router.push("/dashboard");
+          router.push("/dashboard/employee");
       } else {
           await auth.signOut();
           toast({
