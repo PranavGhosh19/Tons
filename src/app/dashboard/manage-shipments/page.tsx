@@ -4,7 +4,7 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useRouter } from 'next/navigation';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { collection, query, DocumentData, orderBy, doc, getDoc, onSnapshot } from 'firebase/firestore';
+import { collection, query, DocumentData, orderBy, doc, getDoc, getDocs } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -68,31 +68,27 @@ export default function ManageShipmentsPage() {
     return () => unsubscribeAuth();
   }, [router]);
   
-  useEffect(() => {
-    let unsubscribeSnapshots: () => void = () => {};
-
-    if (user) {
-        setLoading(true);
+  const fetchShipments = useCallback(async () => {
+    setLoading(true);
+    try {
         const shipmentsCollectionRef = collection(db, 'shipments');
         const q = query(shipmentsCollectionRef, orderBy('createdAt', 'desc'));
-
-        unsubscribeSnapshots = onSnapshot(q, (querySnapshot) => {
-            const shipmentsList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            setShipments(shipmentsList);
-            setLoading(false);
-        }, (error) => {
-            console.error("Error fetching shipments in real-time: ", error);
-            if (error.code !== 'permission-denied') {
-              toast({ title: "Error", description: "Could not fetch shipments.", variant: "destructive" });
-            }
-            setLoading(false);
-        });
+        const querySnapshot = await getDocs(q);
+        const shipmentsList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setShipments(shipmentsList);
+    } catch (error) {
+        console.error("Error fetching shipments: ", error);
+        toast({ title: "Error", description: "Could not fetch shipments.", variant: "destructive" });
+    } finally {
+        setLoading(false);
     }
+  }, [toast]);
 
-    return () => {
-        unsubscribeSnapshots();
-    };
-  }, [user, toast]);
+  useEffect(() => {
+    if (user) {
+        fetchShipments();
+    }
+  }, [user, fetchShipments]);
   
   const filteredShipments = useMemo(() => {
     return shipments.filter(shipment => {
