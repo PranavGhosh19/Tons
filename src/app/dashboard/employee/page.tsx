@@ -8,7 +8,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, Truck, Anchor } from "lucide-react";
+import { Users, ShieldCheck, Ship } from "lucide-react";
 import Link from "next/link";
 
 const DashboardCard = ({ title, description, href, icon: Icon }: { title: string, description: string, href: string, icon: React.ElementType }) => (
@@ -72,6 +72,28 @@ export default function EmployeeDashboardPage() {
         <h1 className="text-2xl sm:text-3xl font-bold font-headline">Employee Dashboard</h1>
         <p className="text-muted-foreground">Welcome, {employeeName}</p>
       </div>
+
+       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <DashboardCard 
+          title="User Management"
+          description="View and manage all exporter and carrier accounts."
+          href="/dashboard/user-management"
+          icon={Users}
+        />
+        <DashboardCard 
+          title="Verification Center"
+          description="Approve or deny new user verification requests."
+          href="/dashboard/verification"
+          icon={ShieldCheck}
+        />
+        <DashboardCard 
+          title="All Shipments"
+          description="Oversee and manage all shipments on the platform."
+          href="/dashboard/manage-shipments"
+          icon={Ship}
+        />
+      </div>
+
     </div>
   );
 }
