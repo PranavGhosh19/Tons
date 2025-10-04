@@ -16,6 +16,12 @@ interface RegisterButtonProps {
   onRegisterSuccess: (shipmentId: string) => void;
 }
 
+declare global {
+    interface Window {
+        Razorpay: any;
+    }
+}
+
 export const RegisterButton: React.FC<RegisterButtonProps> = ({ shipmentId, user, onRegisterSuccess }) => {
   const [isRegistered, setIsRegistered] = useState<boolean>(false);
   const [loading, setLoading] = useState(true);
@@ -53,17 +59,60 @@ export const RegisterButton: React.FC<RegisterButtonProps> = ({ shipmentId, user
     setIsSubmitting(true);
     
     try {
-        const registerDocRef = doc(db, 'shipments', shipmentId, 'register', user.uid);
-        await setDoc(registerDocRef, {
-            carrierId: user.uid,
-            registeredAt: Timestamp.now(),
+        // Step 1: Create Razorpay Order
+        const response = await fetch('/api/razorpay', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ amount: 100 * 100, currency: 'INR' }) // 100 INR
         });
-        setIsRegistered(true);
-        toast({ title: "Success", description: "You have registered your interest for this shipment." });
-        onRegisterSuccess(shipmentId);
+
+        if (!response.ok) {
+            throw new Error('Failed to create Razorpay order');
+        }
+
+        const order = await response.json();
+        
+        // Step 2: Open Razorpay Checkout
+        const options = {
+            key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+            amount: order.amount,
+            currency: order.currency,
+            name: "Shipment Battlefield",
+            description: `Registration for Shipment #${shipmentId}`,
+            order_id: order.id,
+            handler: async function (response: any) {
+                // Step 3: On successful payment, save registration to Firestore
+                try {
+                    const registerDocRef = doc(db, 'shipments', shipmentId, 'register', user.uid);
+                    await setDoc(registerDocRef, {
+                        carrierId: user.uid,
+                        registeredAt: Timestamp.now(),
+                        paymentId: response.razorpay_payment_id,
+                        orderId: response.razorpay_order_id,
+                    });
+                    setIsRegistered(true);
+                    toast({ title: "Success", description: "You have registered your interest for this shipment." });
+                    onRegisterSuccess(shipmentId);
+                } catch (dbError) {
+                    console.error('Error saving registration:', dbError);
+                    toast({ title: "Registration Error", description: "Failed to save your registration after payment. Please contact support.", variant: "destructive" });
+                }
+            },
+            prefill: {
+                name: user.displayName || '',
+                email: user.email || '',
+            },
+            theme: {
+                color: "#1d4ed8"
+            }
+        };
+
+        const rzp = new window.Razorpay(options);
+        rzp.open();
+
     } catch (error) {
-            console.error('Error saving registration:', error);
-            toast({ title: "Registration Error", description: "Failed to save your registration. Please contact support.", variant: "destructive" });
+        console.error('Error during registration process:', error);
+        toast({ title: "Error", description: "Failed to initiate registration payment.", variant: "destructive" });
     } finally {
         setIsSubmitting(false);
     }
@@ -82,7 +131,7 @@ export const RegisterButton: React.FC<RegisterButtonProps> = ({ shipmentId, user
 
   return (
     <Button onClick={handleRegister} disabled={isSubmitting}>
-        {isSubmitting ? 'Registering...' : 'I want to Bid'}
+        {isSubmitting ? 'Processing...' : 'Pay to Bid (₹100)'}
     </Button>
   );
 };

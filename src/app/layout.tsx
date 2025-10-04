@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Poppins, PT_Sans } from 'next/font/google';
 import { AppProviders } from "@/components/app-providers";
+import Script from "next/script";
 
 const fontPoppins = Poppins({
   subsets: ['latin'],
@@ -34,7 +35,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning className={`${fontPoppins.variable} ${fontPtSans.variable}`}>
       <head>
       </head>
-      <body className="min-h-screen bg-background font-body antialiased">
+      <body>
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
@@ -46,6 +47,7 @@ export default function RootLayout({
             </AppProviders>
             <Toaster />
         </ThemeProvider>
+        <Script src="https://checkout.razorpay.com/v1/checkout.js" />
       </body>
     </html>
   );
