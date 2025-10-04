@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -31,11 +32,12 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-interface ExporterVerificationFormProps {
+interface VerificationFormProps {
     user: User;
+    userType: string | null;
 }
 
-export function ExporterVerificationForm({ user }: ExporterVerificationFormProps) {
+export function ExporterVerificationForm({ user, userType }: VerificationFormProps) {
     const router = useRouter();
     const { toast } = useToast();
 
@@ -52,6 +54,8 @@ export function ExporterVerificationForm({ user }: ExporterVerificationFormProps
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
+    const isExporter = userType === 'exporter';
+
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files.length > 0) {
             setIncorporationCertificate(e.target.files[0]);
@@ -59,8 +63,8 @@ export function ExporterVerificationForm({ user }: ExporterVerificationFormProps
     };
 
     const handleSubmit = async () => {
-        setIsConfirmOpen(false); // Close confirmation dialog
-        if (!companyName || !gst || !pan || !iecCode || !adCode || !incorporationCertificate) {
+        setIsConfirmOpen(false);
+        if (!companyName || !gst || !pan || !incorporationCertificate || (isExporter && (!iecCode || !adCode))) {
             toast({ title: "Missing Fields", description: "Please fill out all required fields and upload the incorporation certificate.", variant: "destructive" });
             return;
         }
@@ -73,21 +77,30 @@ export function ExporterVerificationForm({ user }: ExporterVerificationFormProps
             const uploadResult = await uploadBytes(fileRef, incorporationCertificate);
             const downloadUrl = await getDownloadURL(uploadResult.ref);
             
-            // 2. Save all data to Firestore
-            const userDocRef = doc(db, "users", user.uid);
-            await updateDoc(userDocRef, {
-                companyDetails: {
-                    legalName: companyName,
-                    gstin: gst,
-                    pan,
+            // 2. Prepare Firestore data
+            let companyDetails: any = {
+                legalName: companyName,
+                gstin: gst,
+                pan,
+                incorporationCertificateUrl: downloadUrl,
+                incorporationCertificatePath: filePath,
+            };
+
+            if (isExporter) {
+                companyDetails = {
+                    ...companyDetails,
                     tan,
                     iecCode,
                     adCode,
-                    incorporationCertificateUrl: downloadUrl,
-                    incorporationCertificatePath: filePath,
-                },
-                gstin: gst, // Keep gstin at top level for compatibility
-                verificationStatus: 'pending', // Set status to pending
+                }
+            }
+            
+            // 3. Save all data to Firestore
+            const userDocRef = doc(db, "users", user.uid);
+            await updateDoc(userDocRef, {
+                companyDetails,
+                gstin: gst, 
+                verificationStatus: 'pending',
             });
 
             toast({ title: "Verification Submitted", description: "Your business details have been submitted for review." });
@@ -107,8 +120,8 @@ export function ExporterVerificationForm({ user }: ExporterVerificationFormProps
             <div className="flex flex-col items-center justify-center min-h-screen bg-white p-4">
                 <Card className="mx-auto w-full max-w-2xl shadow-xl">
                     <CardHeader className="text-center space-y-2">
-                        <CardTitle className="text-3xl font-bold font-headline">
-                            Exporter Business Verification
+                        <CardTitle className="text-3xl font-bold font-headline capitalize">
+                            {userType} Business Verification
                         </CardTitle>
                         <CardDescription className="text-base">
                             Please provide your company's details for verification.
@@ -128,18 +141,22 @@ export function ExporterVerificationForm({ user }: ExporterVerificationFormProps
                                 <Label htmlFor="pan">PAN</Label>
                                 <Input id="pan" value={pan} onChange={e => setPan(e.target.value)} disabled={isSubmitting} />
                             </div>
-                            <div className="grid gap-2">
-                                <Label htmlFor="tan">TAN (If registered)</Label>
-                                <Input id="tan" value={tan} onChange={e => setTan(e.target.value)} disabled={isSubmitting} />
-                            </div>
-                            <div className="grid gap-2">
-                                <Label htmlFor="iec">IEC Code</Label>
-                                <Input id="iec" value={iecCode} onChange={e => setIecCode(e.target.value)} disabled={isSubmitting} />
-                            </div>
-                            <div className="grid gap-2">
-                                <Label htmlFor="ad">AD Code</Label>
-                                <Input id="ad" value={adCode} onChange={e => setAdCode(e.target.value)} disabled={isSubmitting} />
-                            </div>
+                            {isExporter && (
+                                <>
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="tan">TAN (If registered)</Label>
+                                        <Input id="tan" value={tan} onChange={e => setTan(e.target.value)} disabled={isSubmitting} />
+                                    </div>
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="iec">IEC Code</Label>
+                                        <Input id="iec" value={iecCode} onChange={e => setIecCode(e.target.value)} disabled={isSubmitting} />
+                                    </div>
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="ad">AD Code</Label>
+                                        <Input id="ad" value={adCode} onChange={e => setAdCode(e.target.value)} disabled={isSubmitting} />
+                                    </div>
+                                </>
+                            )}
                             <div className="grid gap-2 sm:col-span-2">
                                 <Label htmlFor="incorporation-cert">Incorporation Certificate</Label>
                                 <Input 

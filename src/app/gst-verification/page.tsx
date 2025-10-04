@@ -22,15 +22,6 @@ import { CheckCircle, Loader2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ExporterVerificationForm } from "@/components/exporter-verification-form";
 
-const TEST_GSTIN = "29AAFCS1234H1Z5";
-
-const verifiedData = {
-  legalName: "SHIPMENT BATTLEFIELD LOGISTICS PVT LTD",
-  tradeName: "Shipment Battlefield",
-  status: "Active",
-  address: "123, BATTLEFIELD STREET, LOGISTICS CITY, STATE, 560100",
-};
-
 const PageSkeleton = () => (
      <div className="flex flex-col items-center justify-center min-h-screen bg-white p-4">
         <Skeleton className="h-[450px] w-full max-w-lg" />
@@ -43,9 +34,6 @@ export default function GstVerificationPage() {
   const [user, setUser] = useState<User | null>(null);
   const [userType, setUserType] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [gstin, setGstin] = useState("");
-  const [isVerifying, setIsVerifying] = useState(false);
-  const [isVerified, setIsVerified] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -71,114 +59,11 @@ export default function GstVerificationPage() {
     return () => unsubscribe();
   }, [router]);
 
-  const handleCarrierVerification = async () => {
-    if (!gstin) {
-      toast({ title: "Error", description: "Please enter a GSTIN.", variant: "destructive" });
-      return;
-    }
-    setIsVerifying(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500));
-
-    if (gstin.toUpperCase() === TEST_GSTIN) {
-      setIsVerified(true);
-      toast({ title: "Success", description: "GSTIN verified successfully." });
-    } else {
-      toast({ title: "Verification Failed", description: "The GSTIN entered is not valid.", variant: "destructive" });
-    }
-    setIsVerifying(false);
-  };
-  
-  const handleCarrierContinue = async () => {
-      if (!user) return;
-      try {
-        const userDocRef = doc(db, "users", user.uid);
-        await updateDoc(userDocRef, {
-            gstin: gstin.toUpperCase(),
-            isGstVerified: true,
-            verificationStatus: 'approved', // Carriers are auto-approved for now
-            companyDetails: verifiedData,
-        });
-        router.push("/dashboard");
-      } catch (error) {
-          toast({ title: "Error", description: "Could not save details. Please try again.", variant: "destructive" });
-      }
-  }
 
   if (loading || !user) {
     return <PageSkeleton />;
   }
 
-  if (userType === 'exporter') {
-    return <ExporterVerificationForm user={user} />
-  }
-
-  return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-white p-4">
-      <Card className="mx-auto w-full max-w-lg shadow-xl">
-        <CardHeader className="text-center space-y-2">
-          <CardTitle className="text-3xl font-bold font-headline">
-            Business Verification
-          </CardTitle>
-          <CardDescription className="text-base">
-            Please enter your company's GSTIN to verify your business.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {isVerified ? (
-            <div className="p-6 bg-green-50 border-2 border-green-500 rounded-lg">
-                <div className="flex items-center gap-3 mb-6">
-                    <CheckCircle className="w-8 h-8 text-green-600" />
-                    <h3 className="text-2xl font-bold text-green-800 font-headline">Details Verified</h3>
-                </div>
-                <div className="space-y-4 text-base">
-                    <div className="flex justify-between">
-                        <span className="text-muted-foreground">Legal Name:</span>
-                        <span className="font-semibold text-right">{verifiedData.legalName}</span>
-                    </div>
-                    <div className="flex justify-between">
-                        <span className="text-muted-foreground">Trade Name:</span>
-                        <span className="font-semibold text-right">{verifiedData.tradeName}</span>
-                    </div>
-                     <div className="flex justify-between">
-                        <span className="text-muted-foreground">Status:</span>
-                        <span className="font-semibold text-right">{verifiedData.status}</span>
-                    </div>
-                     <div className="flex justify-between">
-                        <span className="text-muted-foreground">Address:</span>
-                        <span className="font-semibold text-right">{verifiedData.address}</span>
-                    </div>
-                </div>
-            </div>
-          ) : (
-            <div className="grid gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="gstin">GSTIN</Label>
-                <Input
-                  id="gstin"
-                  placeholder="e.g., 29AAFCS1234H1Z5"
-                  required
-                  value={gstin}
-                  onChange={(e) => setGstin(e.target.value)}
-                  disabled={isVerifying}
-                  className="bg-background h-12 text-lg"
-                />
-              </div>
-            </div>
-          )}
-        </CardContent>
-        <CardFooter>
-            {isVerified ? (
-                 <Button onClick={handleCarrierContinue} className="w-full h-12 text-lg">
-                    Continue to Dashboard
-                 </Button>
-            ) : (
-                <Button onClick={handleCarrierVerification} disabled={isVerifying} className="w-full h-12 text-lg">
-                    {isVerifying ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Verifying...</> : 'Verify & Continue'}
-                </Button>
-            )}
-        </CardFooter>
-      </Card>
-    </div>
-  );
+  // Both exporters and carriers will now use the same detailed verification form.
+  return <ExporterVerificationForm user={user} userType={userType} />
 }
