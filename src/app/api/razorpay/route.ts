@@ -10,7 +10,7 @@ export async function POST(request: Request) {
   const keySecret = process.env.RAZORPAY_KEY_SECRET;
 
   if (!keyId || !keySecret || keyId === 'YOUR_KEY_ID' || keySecret === 'YOUR_KEY_SECRET') {
-    console.error('Razorpay keys are not configured in .env file');
+    console.error('Razorpay keys are not configured in .env file. Ensure RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET are set.');
     return NextResponse.json(
       { error: 'Payment gateway is not configured. Please contact support.' },
       { status: 500 }
@@ -33,8 +33,13 @@ export async function POST(request: Request) {
     return NextResponse.json(order);
   } catch (error) {
     console.error('Razorpay order creation failed:', error);
+    // Add more detailed error logging
+    if (error instanceof Error) {
+        console.error('Error Name:', error.name);
+        console.error('Error Message:', error.message);
+    }
     return NextResponse.json(
-      { error: 'Failed to create Razorpay order' },
+      { error: 'Failed to create Razorpay order. Please check server logs for details.' },
       { status: 500 }
     );
   }
