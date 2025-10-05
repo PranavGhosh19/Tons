@@ -67,7 +67,8 @@ export const RegisterButton: React.FC<RegisterButtonProps> = ({ shipmentId, user
         });
 
         if (!response.ok) {
-            throw new Error('Failed to create Razorpay order');
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to create Razorpay order');
         }
 
         const order = await response.json();
@@ -77,8 +78,8 @@ export const RegisterButton: React.FC<RegisterButtonProps> = ({ shipmentId, user
             key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
             amount: order.amount,
             currency: order.currency,
-            name: "Shipment Battlefield",
-            description: `Registration for Shipment #${shipmentId}`,
+            name: "Shipping Battlefield",
+            description: `Registration for Shipment #${shipmentId.substring(0, 8)}`,
             order_id: order.id,
             handler: async function (response: any) {
                 // Step 3: On successful payment, save registration to Firestore
@@ -110,9 +111,13 @@ export const RegisterButton: React.FC<RegisterButtonProps> = ({ shipmentId, user
         const rzp = new window.Razorpay(options);
         rzp.open();
 
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error during registration process:', error);
-        toast({ title: "Error", description: "Failed to initiate registration payment.", variant: "destructive" });
+        toast({ 
+            title: "Error", 
+            description: error.message || "Failed to initiate registration payment.",
+            variant: "destructive"
+        });
     } finally {
         setIsSubmitting(false);
     }
