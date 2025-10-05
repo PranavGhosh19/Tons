@@ -40,6 +40,7 @@ export default function VerificationPage() {
   const [pendingUsers, setPendingUsers] = useState<DocumentData[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedUser, setSelectedUser] = useState<DocumentData | null>(null);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   
   const router = useRouter();
   const { toast } = useToast();
@@ -103,6 +104,11 @@ export default function VerificationPage() {
       }
   }
 
+  const handleOpenPreview = (user: DocumentData) => {
+    setSelectedUser(user);
+    setIsPreviewOpen(true);
+  }
+
 
   if (loading) {
     return (
@@ -121,6 +127,7 @@ export default function VerificationPage() {
   )
 
   return (
+    <>
     <div className="container py-6 md:py-10">
         <div className="flex justify-between items-center mb-8">
             <h1 className="text-2xl sm:text-3xl font-bold font-headline">Verification Center</h1>
@@ -185,11 +192,9 @@ export default function VerificationPage() {
                                                                 )}
                                                             </dl>
                                                             {selectedUser.companyDetails.incorporationCertificateUrl && (
-                                                                <Button variant="secondary" asChild className="w-full">
-                                                                    <Link href={selectedUser.companyDetails.incorporationCertificateUrl} target="_blank" rel="noopener noreferrer">
-                                                                        <FileText className="mr-2 h-4 w-4" />
-                                                                        Preview Document
-                                                                    </Link>
+                                                                <Button variant="secondary" onClick={() => handleOpenPreview(pUser)} className="w-full">
+                                                                    <FileText className="mr-2 h-4 w-4" />
+                                                                    Preview Document
                                                                 </Button>
                                                             )}
                                                         </div>
@@ -254,5 +259,27 @@ export default function VerificationPage() {
             </div>
         )}
     </div>
+    <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
+        <DialogContent className="max-w-4xl h-[90vh]">
+            <DialogHeader>
+                <DialogTitle>Document Preview</DialogTitle>
+                <DialogDescription>Viewing document for {selectedUser?.companyDetails?.legalName}</DialogDescription>
+            </DialogHeader>
+            <div className="h-full w-full rounded-lg overflow-hidden border">
+                {selectedUser?.companyDetails?.incorporationCertificateUrl ? (
+                    <iframe 
+                        src={selectedUser.companyDetails.incorporationCertificateUrl} 
+                        className="h-full w-full"
+                        title="Document Preview"
+                    />
+                ) : (
+                    <div className="flex items-center justify-center h-full text-muted-foreground">
+                        No document to preview.
+                    </div>
+                )}
+            </div>
+        </DialogContent>
+    </Dialog>
+    </>
   );
 }
