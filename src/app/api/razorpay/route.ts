@@ -6,11 +6,11 @@ import { randomBytes } from 'crypto';
 export async function POST(request: Request) {
   const { amount, currency } = await request.json();
 
-  const keyId = process.env.RAZORPAY_KEY_ID;
+  const keyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
   const keySecret = process.env.RAZORPAY_KEY_SECRET;
 
   if (!keyId || !keySecret || keyId === 'YOUR_KEY_ID' || keySecret === 'YOUR_KEY_SECRET') {
-    console.error('Razorpay keys are not configured in .env file. Ensure RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET are set.');
+    console.error('Razorpay keys are not configured in .env file. Ensure NEXT_PUBLIC_RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET are set.');
     return NextResponse.json(
       { error: 'Payment gateway is not configured. Please contact support.' },
       { status: 500 }
