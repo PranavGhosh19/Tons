@@ -1,60 +1,59 @@
-
 import { NextResponse } from "next/server";
 import Razorpay from "razorpay";
 
 export async function POST(request: Request) {
-    try {
-        const { amount, currency, notes } = await request.json();
-        
-        const key_id = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
-        const key_secret = process.env.RAZORPAY_KEY_SECRET;
+  try {
+    const body = await request.json().catch(() => null);
+    const amount = body?.amount;
+    const currency = body?.currency || "INR";
+    const notes = body?.notes || {};
 
-        if (!key_id || !key_secret) {
-            console.error("Razorpay API keys are not configured in environment variables.");
-            return NextResponse.json(
-                { error: "Payment gateway is not configured. Please contact support." }, 
-                { status: 500 }
-            );
-        }
-
-        const instance = new Razorpay({
-            key_id,
-            key_secret,
-        });
-
-        const options = {
-            amount: amount,
-            currency: currency,
-            receipt: `receipt_order_${new Date().getTime()}`,
-            notes: notes,
-        };
-
-        const order = await instance.orders.create(options);
-
-        if (!order) {
-            return NextResponse.json(
-                { error: "Could not create Razorpay order." }, 
-                { status: 500 }
-            );
-        }
-        
-        return NextResponse.json(order);
-
-    } catch (error: any) {
-        console.error("Razorpay API Error:", error);
-
-        // Check if it's a Razorpay-specific error with a description
-        if (error.error && error.error.description) {
-             return NextResponse.json(
-                { error: error.error.description }, 
-                { status: error.statusCode || 500 }
-            );
-        }
-        
-        // Fallback for other types of errors
-        return NextResponse.json(
-            { error: error.message || "An unknown Razorpay integration error occurred" }, 
-            { status: 500 }
-        );
+    // validate amount (paise as integer)
+    if (!amount || typeof amount !== "number" || amount <= 0) {
+      return NextResponse.json(
+        { error: "Invalid amount. Amount must be a positive integer in paise." },
+        { status: 400 }
+      );
     }
+
+    const keyId = process.env.RAZORPAY_KEY_ID;
+    const keySecret = process.env.RAZORPAY_KEY_SECRET;
+
+    if (!keyId || !keySecret) {
+      console.error("Missing Razorpay server credentials (RAZORPAY_KEY_ID/SECRET).");
+      return NextResponse.json(
+        { error: "Server misconfiguration: Razorpay credentials missing." },
+        { status: 500 }
+      );
+    }
+
+    const instance = new Razorpay({
+      key_id: keyId,
+      key_secret: keySecret,
+    });
+
+    const options = {
+      amount,
+      currency,
+      receipt: `receipt_order_${Date.now()}`,
+      notes,
+    };
+
+    const order = await instance.orders.create(options);
+
+    if (!order) {
+      return NextResponse.json({ error: "Could not create order" }, { status: 500 });
+    }
+
+    return NextResponse.json(order);
+  } catch (err: any) {
+    // Full structured server log for debugging (check terminal)
+    console.error("Razorpay API Error:", JSON.stringify(err, null, 2));
+
+    const errorMessage =
+      err?.error?.description || err?.description || err?.message || "An unknown Razorpay integration error occurred";
+
+    // Return structured JSON so client can show the real message
+    return NextResponse.json({ error: errorMessage, details: err }, { status: 500 });
+  }
 }
