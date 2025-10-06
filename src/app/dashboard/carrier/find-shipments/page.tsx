@@ -54,8 +54,13 @@ export default function FindShipmentsPage() {
   }, [router]);
 
   useEffect(() => {
+    if (!user) return; // Wait for user to be loaded
+
     let unsubscribeSnapshots: () => void = () => {};
-    if (user && userData?.verificationStatus === 'approved') {
+    
+    // Only set loading to true when we start fetching shipments.
+    // The initial `true` state handles the auth/user data loading.
+    if (userData?.verificationStatus === 'approved') {
         setLoading(true);
         const shipmentsQuery = query(collection(db, 'shipments'), orderBy('createdAt', 'desc'));
 
@@ -71,9 +76,10 @@ export default function FindShipmentsPage() {
             toast({ title: "Error", description: "Could not fetch shipments.", variant: "destructive" });
             setLoading(false);
         });
-    } else {
+    } else if (userData) { // userData is loaded but not approved
         setLoading(false);
     }
+    
      return () => {
         unsubscribeSnapshots();
     };
