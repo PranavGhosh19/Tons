@@ -31,8 +31,10 @@ export async function POST(request: Request) {
 
     } catch (error: any) {
         console.error("Razorpay API Error:", error);
+        // Forward the specific error message from Razorpay if available
+        const errorMessage = error.description || error.message || "An unknown Razorpay integration error occurred";
         return NextResponse.json(
-            { error: "Razorpay integration error", details: error.message || "An unknown error occurred" }, 
+            { error: errorMessage }, 
             { status: 500 }
         );
     }
