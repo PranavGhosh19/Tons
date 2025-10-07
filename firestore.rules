@@ -20,51 +20,6 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/shipments/$(shipmentId));
     }
 
-    // ───── Verification Logic (for Exporter & Carrier) ─────
-    function isValidVerificationSubmission(requestData, resourceData, userId) {
-      // Common fields required for all business verifications
-      let baseFields = [
-        'legalName',
-        'gstin',
-        'pan',
-        'incorporationCertificateUrl',
-        'incorporationCertificatePath'
-      ];
-
-      // Exporter-specific additional fields
-      let exporterExtra = ['iecCode', 'adCode'];
-
-      // Carrier-specific additional fields
-      let carrierExtra = ['licenseNumber', 'companyType'];
-
-      // Determine userType from Firestore or the incoming request
-      let userType =
-        resourceData.userType != null
-          ? resourceData.userType
-          : (requestData.userType != null ? requestData.userType : null);
-
-      // Determine required keys based on userType
-      let requiredKeys =
-        userType == 'exporter'
-          ? baseFields.concat(exporterExtra)
-          : userType == 'carrier'
-            ? baseFields.concat(carrierExtra)
-            : baseFields;
-
-      // Ensure the request data has all required keys
-      let hasAllKeys =
-        requestData.companyDetails is map &&
-        requestData.companyDetails.keys().hasAll(requiredKeys);
-
-      // Ensure uploaded document path is under verification-documents/{userId}/...
-      let validPath =
-        requestData.companyDetails.incorporationCertificatePath.matches(
-          'verification-documents/' + userId + '/.*'
-        );
-
-      return hasAllKeys && validPath;
-    }
-
     // ───── Users Collection ─────
     match /users/{userId} {
       allow read, update: if request.auth.uid == userId || isEmployee(request.auth.uid);
@@ -80,11 +35,8 @@ service cloud.firestore {
                     && isExporter(request.auth.uid)
                     && request.resource.data.exporterId == request.auth.uid;
 
-      // LIST: Allow any logged-in user (for collection fetch)
-      allow list: if request.auth.uid != null;
-
-      // GET: Exporter (owner), Employee, or Carrier
-      allow get: if request.auth.uid != null && (
+      // READ: Exporter (owner), Employee, or Carrier
+      allow get, list: if request.auth.uid != null && (
         isEmployee(request.auth.uid) ||
         (isExporter(request.auth.uid) && resource.data.exporterId == request.auth.uid) ||
         isCarrier(request.auth.uid)
@@ -94,21 +46,26 @@ service cloud.firestore {
       allow update: if request.auth.uid != null && (
         isEmployee(request.auth.uid) ||
         (
+          // Exporter is owner
           isExporter(request.auth.uid) &&
           resource.data.exporterId == request.auth.uid &&
           (
-            // Allow editing drafts and scheduled shipments
+            // ① Allow editing draft or scheduled shipments
             (
               (resource.data.status == 'draft' || resource.data.status == 'scheduled') &&
               request.resource.data.exporterId == resource.data.exporterId &&
               request.resource.data.createdAt == resource.data.createdAt
             ) ||
-            // Allow awarding a live shipment
+
+            // ② Allow exporter to accept a bid (award a live shipment)
             (
               resource.data.status == 'live' &&
               request.resource.data.status == 'awarded' &&
               request.resource.data.winningBidId != null &&
-              request.resource.data.winningCarrierId != null
+              request.resource.data.winningCarrierId != null &&
+              // prevent changing ownership fields
+              request.resource.data.exporterId == resource.data.exporterId &&
+              request.resource.data.createdAt == resource.data.createdAt
             )
           )
         )
@@ -124,7 +81,7 @@ service cloud.firestore {
     // ───── Bids Subcollection ─────
     match /shipments/{shipmentId}/bids/{bidId} {
 
-      // READ: Exporter (owner), Employee, or Carrier (when live)
+      // READ: Exporter (owner), Employee, or Carrier (for live shipments)
       allow read: if request.auth.uid != null && (
         isEmployee(request.auth.uid) ||
         (isExporter(request.auth.uid) &&
@@ -139,8 +96,11 @@ service cloud.firestore {
         request.resource.data.carrierId == request.auth.uid &&
         getShipment(shipmentId).data.status == 'live';
 
-      // No updates to bids are allowed directly
-      allow update: if false;
+      // UPDATE: Exporter can mark a bid as accepted
+      allow update: if request.auth.uid != null &&
+        isExporter(request.auth.uid) &&
+        getShipment(shipmentId).data.exporterId == request.auth.uid &&
+        request.resource.data.status == 'accepted';
     }
 
     // ───── Register Subcollection ─────
@@ -158,9 +118,8 @@ service cloud.firestore {
         request.auth.uid == carrierId &&
         getShipment(shipmentId).data.status == 'scheduled';
     }
-
+    
     // ───── CollectionGroup Queries ─────
-    // Allow collection group queries for carrier-owned bids/registers
     match /{documentPath=**}/register/{docId} {
       allow read: if request.auth.uid != null
                   && isCarrier(request.auth.uid)
