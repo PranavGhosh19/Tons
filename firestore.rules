@@ -1,4 +1,3 @@
-
 rules_version = '2';
 
 service cloud.firestore {
@@ -140,14 +139,8 @@ service cloud.firestore {
         request.resource.data.carrierId == request.auth.uid &&
         getShipment(shipmentId).data.status == 'live';
 
-      // UPDATE: Exporter can accept a bid
-      allow update: if request.auth.uid != null &&
-        isExporter(request.auth.uid) &&
-        getShipment(shipmentId).data.exporterId == request.auth.uid &&
-        // Ensure exporter only sets the bid status to 'accepted'
-        request.resource.data.status == 'accepted' &&
-        resource.data.carrierId == request.resource.data.carrierId &&
-        resource.data.amount == request.resource.data.amount;
+      // No updates to bids are allowed directly
+      allow update: if false;
     }
 
     // ───── Register Subcollection ─────
