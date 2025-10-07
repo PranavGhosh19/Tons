@@ -1,4 +1,3 @@
-
 rules_version = '2';
 
 service cloud.firestore {
@@ -69,26 +68,8 @@ service cloud.firestore {
     // ───── Users Collection ─────
     match /users/{userId} {
       allow read, update: if request.auth.uid == userId || isEmployee(request.auth.uid);
-      allow create: if request.auth.uid == userId 
+      allow create: if request.auth.uid == userId
                     && request.resource.data.email == request.auth.token.email;
-    }
-
-    // ───── Verification Collection ─────
-    match /verification/{userId} {
-      // READ: Owner or Employee can read
-      allow read: if request.auth.uid == userId || isEmployee(request.auth.uid);
-
-      // CREATE: Only the owner can submit; must have valid data
-      allow create: if request.auth.uid == userId &&
-                    (isExporter(userId) || isCarrier(userId) || 
-                     (request.resource.data.userType in ['exporter', 'carrier'])) &&
-                    isValidVerificationSubmission(request.resource.data, get(/databases/$(database)/documents/users/$(userId)).data, userId);
-
-      // UPDATE: Owner or Employee can update, but must maintain structure
-      allow update: if (
-        (request.auth.uid == userId || isEmployee(request.auth.uid)) &&
-        isValidVerificationSubmission(request.resource.data, get(/databases/$(database)/documents/users/$(userId)).data, userId)
-      );
     }
 
     // ───── Shipments Collection ─────
@@ -112,19 +93,18 @@ service cloud.firestore {
           isExporter(request.auth.uid) &&
           resource.data.exporterId == request.auth.uid &&
           (
-            // Rule for editing a draft/scheduled shipment
+            // Allow editing drafts and scheduled shipments
             (
               (resource.data.status == 'draft' || resource.data.status == 'scheduled') &&
               request.resource.data.exporterId == resource.data.exporterId &&
               request.resource.data.createdAt == resource.data.createdAt
             ) ||
-            // Rule for awarding a live shipment
+            // Allow awarding a live shipment
             (
               resource.data.status == 'live' &&
               request.resource.data.status == 'awarded' &&
               request.resource.data.winningBidId != null &&
-              request.resource.data.exporterId == resource.data.exporterId && // immutable
-              request.resource.data.createdAt == resource.data.createdAt // immutable
+              request.resource.data.winningCarrierId != null
             )
           )
         )
