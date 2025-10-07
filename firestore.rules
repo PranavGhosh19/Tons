@@ -115,31 +115,24 @@ service cloud.firestore {
 
     // ───── Bids Subcollection ─────
     match /shipments/{shipmentId}/bids/{bidId} {
-
-      // READ: Exporter (owner), Employee, or Carrier (when shipment is live)
       allow read: if request.auth.uid != null && (
         isEmployee(request.auth.uid) ||
+
+        // Exporters can read bids on their own shipments
         (isExporter(request.auth.uid) &&
-          getShipment(shipmentId).data.exporterId == request.auth.uid) ||
+         getShipment(shipmentId).data.exporterId == request.auth.uid) ||
+
+        // Carriers can read bids if shipment is live
         (isCarrier(request.auth.uid) &&
-          getShipment(shipmentId).data.status == 'live')
+         getShipment(shipmentId).data.status == 'live')
       );
 
-      // CREATE: Carrier can place a bid if shipment is live
       allow create: if request.auth.uid != null &&
         isCarrier(request.auth.uid) &&
         request.resource.data.carrierId == request.auth.uid &&
         getShipment(shipmentId).data.status == 'live';
-
-      // UPDATE: Exporter can mark a bid as accepted
-      allow update: if request.auth.uid != null &&
-        isExporter(request.auth.uid) &&
-        getShipment(shipmentId).data.exporterId == request.auth.uid &&
-        request.resource.data.status == 'accepted';
-
-      // DELETE: No one can delete bids (optional — keeps data integrity)
-      allow delete: if false;
     }
+
 
     // ───── Register Subcollection ─────
     match /shipments/{shipmentId}/register/{carrierId} {
