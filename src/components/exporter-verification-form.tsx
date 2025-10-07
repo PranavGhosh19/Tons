@@ -80,8 +80,8 @@ export function ExporterVerificationForm({ user, userType }: VerificationFormPro
         setIsSubmitting(true);
 
         try {
-            // 1. Upload file to Firebase Storage
-            const filePath = `verification-documents/${user.uid}/incorporation-certificate-${Date.now()}`;
+            // 1. Upload file to Firebase Storage with the new path structure
+            const filePath = `verification-documents/${userType}/${user.uid}/incorporation-certificate-${Date.now()}`;
             const fileRef = ref(storage, filePath);
             const uploadResult = await uploadBytes(fileRef, incorporationCertificate!);
             const downloadUrl = await getDownloadURL(uploadResult.ref);
