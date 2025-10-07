@@ -168,7 +168,7 @@ export default function ShipmentDetailPage() {
             winningBidId: bid.id,
             winningCarrierId: bid.carrierId,
             winningCarrierName: bid.carrierName,
-            winningCarrierLegalName: carrierLegalName, // Add the verified legal name
+            winningCarrierLegalName: carrierLegalName,
             winningBidAmount: bid.bidAmount
         });
         toast({ title: "Bid Awarded!", description: `You have accepted the bid from ${bid.carrierName}.`});
@@ -497,3 +497,5 @@ export default function ShipmentDetailPage() {
     </div>
   );
 }
+
+    
