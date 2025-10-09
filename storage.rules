@@ -1,40 +1,53 @@
-
 rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
 
-    // ───── Helper Functions ─────
-    function isEmployee() {
-      return get(/databases/(default)/documents/users/$(request.auth.uid)).data.userType == 'employee';
-    }
-
-    function getShipment(shipmentId) {
-      return get(/databases/(default)/documents/shipments/$(shipmentId));
-    }
-
-    function isShipmentParticipant(shipmentId) {
-      let shipment = getShipment(shipmentId).data;
-      return request.auth.uid == shipment.exporterId || request.auth.uid == shipment.winningCarrierId;
-    }
-
     // ───── Verification Documents ─────
-    match /verification-documents/{userType}/{userId}/{allPaths=**} {
+    match /verification-documents/{userType}/{userId}/{documentName} {
       function isOwner() {
         return request.auth.uid == userId;
       }
-      allow read: if request.auth != null && (isOwner() || isEmployee());
-      allow write: if request.auth != null && isOwner();
-    }
+      function isEmployee() {
+        return get(/databases/(default)/documents/users/$(request.auth.uid)).data.userType == 'employee';
+      }
+      function isValidDocument() {
+        // This rule is no longer needed as path is specific
+        return true;
+      }
+      function isValidSize() {
+        return request.resource.size < 5 * 1024 * 1024; // 5 MB
+      }
+      function isValidType() {
+        return request.resource.contentType.matches('image/.*|application/pdf');
+      }
 
+      allow read: if request.auth != null && (isOwner() || isEmployee());
+      allow write: if request.auth != null && isOwner() && isValidSize() && isValidType();
+    }
+    
     // ───── Shipment Documents ─────
-    match /shipments/{shipmentId}/{userId}_{fileName} {
-       allow read: if request.auth != null && (isShipmentParticipant(shipmentId) || isEmployee());
-       allow create: if request.auth != null &&
-                      request.auth.uid == userId &&
-                      (isShipmentParticipant(shipmentId) || isEmployee()) &&
-                      request.resource.size < 5 * 1024 * 1024 &&
-                      request.resource.contentType.matches('image/.*|application/pdf');
+    match /shipments/{shipmentId}/{fileId} {
+       function isEmployee() {
+        return get(/databases/(default)/documents/users/$(request.auth.uid)).data.userType == 'employee';
+      }
+      function isShipmentParticipant() {
+        let shipment = get(/databases/(default)/documents/shipments/$(shipmentId)).data;
+        return request.auth.uid == shipment.exporterId || request.auth.uid == shipment.winningCarrierId;
+      }
+      function isValidSize() {
+          return request.resource.size < 5 * 1024 * 1024; // 5 MB
+      }
+      function isValidType() {
+        return request.resource.contentType.matches('image/.*|application/pdf|application/msword|application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+      }
+      function isOwnerOfFile() {
+        // Check if the filename starts with the user's UID
+        return fileId.matches(request.auth.uid + '_.*');
+      }
+
+      allow read: if request.auth != null && (isShipmentParticipant() || isEmployee());
+      allow write: if request.auth != null && isShipmentParticipant() && isOwnerOfFile() && isValidSize() && isValidType();
     }
 
     // ───── Default Deny Rule ─────
@@ -43,5 +56,3 @@ service firebase.storage {
     }
   }
 }
-
-    

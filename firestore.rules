@@ -1,4 +1,3 @@
-
 rules_version = '2';
 
 service cloud.firestore {
@@ -19,11 +18,6 @@ service cloud.firestore {
 
     function getShipment(shipmentId) {
       return get(/databases/$(database)/documents/shipments/$(shipmentId));
-    }
-
-    function isShipmentParticipant(shipmentId, userId) {
-      let shipment = getShipment(shipmentId).data;
-      return userId == shipment.exporterId || userId == shipment.winningCarrierId;
     }
 
     // ───── Verification Logic (for Exporter & Carrier) ─────
@@ -85,10 +79,9 @@ service cloud.firestore {
         isCarrier(request.auth.uid)
       );
 
-      // UPDATE: Exporter can modify based on shipment status
+      // UPDATE: Exporter can modify based on shipment status or employee/carrier can add POC details
       allow update: if request.auth.uid != null && (
         isEmployee(request.auth.uid) ||
-        isShipmentParticipant(shipmentId, request.auth.uid) ||
         (
           isExporter(request.auth.uid) &&
           resource.data.exporterId == request.auth.uid &&
@@ -99,7 +92,6 @@ service cloud.firestore {
               request.resource.data.exporterId == resource.data.exporterId &&
               request.resource.data.createdAt == resource.data.createdAt
             ) ||
-
             // ② Allow exporter to award a live shipment (accepting a bid)
             (
               resource.data.status == 'live' &&
@@ -108,8 +100,21 @@ service cloud.firestore {
               request.resource.data.winningCarrierId != null &&
               request.resource.data.exporterId == resource.data.exporterId &&
               request.resource.data.createdAt == resource.data.createdAt
+            ) ||
+            // ③ Allow exporter to update their POC details on an awarded shipment
+            (
+              resource.data.status == 'awarded' &&
+              request.resource.data.keys().hasAll(['exporterPocFullName', 'exporterPocPhoneNumber']) &&
+              request.resource.data.size() == 2
             )
           )
+        ) ||
+        ( // ④ Allow winning carrier to update their POC details on an awarded shipment
+          isCarrier(request.auth.uid) &&
+          resource.data.winningCarrierId == request.auth.uid &&
+          resource.data.status == 'awarded' &&
+          request.resource.data.keys().hasAll(['vendorPocFullName', 'vendorPocPhoneNumber']) &&
+          request.resource.data.size() == 2
         )
       );
 
@@ -118,6 +123,22 @@ service cloud.firestore {
         isExporter(request.auth.uid) &&
         resource.data.exporterId == request.auth.uid &&
         resource.data.status == 'draft';
+    }
+    
+    // ───── Shipment Documents Subcollection ─────
+    match /shipments/{shipmentId}/documents/{documentId} {
+        function isShipmentParticipant() {
+            let shipment = getShipment(shipmentId).data;
+            return request.auth.uid == shipment.exporterId || request.auth.uid == shipment.winningCarrierId;
+        }
+
+        // READ: Participants (exporter, winner) or employee can read
+        allow read: if request.auth != null && (isShipmentParticipant() || isEmployee(request.auth.uid));
+
+        // CREATE: Participants can upload documents
+        allow create: if request.auth != null && isShipmentParticipant() &&
+                        request.resource.data.uploadedBy == request.auth.uid &&
+                        request.resource.data.path.matches('shipments/' + shipmentId + '/' + request.auth.uid + '_.*');
     }
 
     // ───── Bids Subcollection ─────
@@ -157,14 +178,6 @@ service cloud.firestore {
         getShipment(shipmentId).data.status == 'scheduled';
     }
 
-     // ───── Documents Subcollection (for awarded shipments) ─────
-    match /shipments/{shipmentId}/documents/{documentId} {
-      allow read, create: if request.auth.uid != null &&
-                      getShipment(shipmentId).data.status == 'awarded' &&
-                      (isShipmentParticipant(shipmentId, request.auth.uid) || isEmployee(request.auth.uid));
-    }
-
-
     // ───── CollectionGroup Queries ─────
     match /{documentPath=**}/register/{docId} {
       allow read: if request.auth.uid != null
@@ -179,5 +192,3 @@ service cloud.firestore {
     }
   }
 }
-
-    
