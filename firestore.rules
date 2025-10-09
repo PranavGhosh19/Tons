@@ -1,3 +1,4 @@
+
 rules_version = '2';
 
 service cloud.firestore {
@@ -18,6 +19,11 @@ service cloud.firestore {
 
     function getShipment(shipmentId) {
       return get(/databases/$(database)/documents/shipments/$(shipmentId));
+    }
+    
+    function isShipmentParticipant(shipmentId, userId) {
+      let shipment = getShipment(shipmentId).data;
+      return userId == shipment.exporterId || userId == shipment.winningCarrierId;
     }
 
     // ───── Verification Logic (for Exporter & Carrier) ─────
@@ -111,6 +117,19 @@ service cloud.firestore {
         isExporter(request.auth.uid) &&
         resource.data.exporterId == request.auth.uid &&
         resource.data.status == 'draft';
+        
+        
+      // ───── Documents Subcollection ─────
+      match /documents/{documentId} {
+        allow read: if request.auth.uid != null && (
+          isEmployee(request.auth.uid) ||
+          isShipmentParticipant(shipmentId, request.auth.uid)
+        );
+        allow create: if request.auth.uid != null &&
+          isShipmentParticipant(shipmentId, request.auth.uid) &&
+          request.resource.data.uploadedBy == request.auth.uid;
+        allow delete: if false; // Deletions handled by functions if needed
+      }
     }
 
     // ───── Bids Subcollection ─────
@@ -164,3 +183,5 @@ service cloud.firestore {
     }
   }
 }
+
+    

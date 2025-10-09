@@ -4,18 +4,20 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { onAuthStateChanged, User } from "firebase/auth";
-import { doc, getDoc, DocumentData, updateDoc } from "firebase/firestore";
-import { auth, db } from "@/lib/firebase";
+import { doc, getDoc, DocumentData, updateDoc, collection, addDoc, serverTimestamp, query, orderBy, onSnapshot } from "firebase/firestore";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { auth, db, storage } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Upload, FileText, Anchor, Truck, Building2, User as UserIcon, Phone, Save, PlusCircle } from "lucide-react";
+import { ArrowLeft, Upload, FileText, Anchor, Truck, Building2, User as UserIcon, Phone, Save, PlusCircle, Download, Trash2, Loader2 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { format } from "date-fns";
 
 
 const InfoCardSkeleton = () => (
@@ -32,8 +34,10 @@ const InfoCardSkeleton = () => (
 
 export default function ShipmentDocumentsPage() {
   const [user, setUser] = useState<User | null>(null);
+  const [userData, setUserData] = useState<DocumentData | null>(null);
   const [userType, setUserType] = useState<string | null>(null);
   const [shipment, setShipment] = useState<DocumentData | null>(null);
+  const [documents, setDocuments] = useState<DocumentData[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Exporter POC Input State
@@ -45,6 +49,12 @@ export default function ShipmentDocumentsPage() {
   const [vendorPocFullName, setVendorPocFullName] = useState("");
   const [vendorPocPhoneNumber, setVendorPocPhoneNumber] = useState("");
   const [isSavingVendor, setIsSavingVendor] = useState(false);
+
+  // Upload Dialog State
+  const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
+  const [documentName, setDocumentName] = useState("");
+  const [fileToUpload, setFileToUpload] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   const router = useRouter();
   const params = useParams();
@@ -58,7 +68,9 @@ export default function ShipmentDocumentsPage() {
             const userDocRef = doc(db, 'users', currentUser.uid);
             const userDoc = await getDoc(userDocRef);
             if (userDoc.exists()) {
-              setUserType(userDoc.data()?.userType || null);
+              const uData = userDoc.data();
+              setUserData(uData);
+              setUserType(uData?.userType || null);
             }
         } else {
             router.push("/login");
@@ -85,7 +97,6 @@ export default function ShipmentDocumentsPage() {
 
                 if (shipmentData.status === 'awarded' && (isOwner || isWinningCarrier || isEmployee)) {
                     setShipment({ id: docSnap.id, ...shipmentData });
-                    // Pre-fill POC info from the shipment doc itself
                     setExporterPocFullName(shipmentData.exporterPocFullName || '');
                     setExporterPocPhoneNumber(shipmentData.exporterPocPhoneNumber || '');
                     setVendorPocFullName(shipmentData.vendorPocFullName || '');
@@ -109,6 +120,22 @@ export default function ShipmentDocumentsPage() {
     fetchShipmentDetails();
 
   }, [user, userType, shipmentId, router, toast]);
+
+    useEffect(() => {
+        if (!shipmentId) return;
+
+        const documentsQuery = query(collection(db, "shipments", shipmentId, "documents"), orderBy("uploadedAt", "desc"));
+        const unsubscribe = onSnapshot(documentsQuery, (querySnapshot) => {
+            const docsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            setDocuments(docsData);
+        }, (error) => {
+            console.error("Error fetching documents:", error);
+            toast({ title: "Error", description: "Could not load shipment documents.", variant: "destructive"});
+        });
+
+        return () => unsubscribe();
+    }, [shipmentId, toast]);
+
 
   const handlePocUpdate = async (type: 'exporter' | 'vendor') => {
     if (!shipment) return;
@@ -142,6 +169,50 @@ export default function ShipmentDocumentsPage() {
     } finally {
         if (type === 'exporter') setIsSavingExporter(false);
         else setIsSavingVendor(false);
+    }
+  };
+
+  const handleUploadDocument = async () => {
+    if (!fileToUpload || !documentName) {
+        toast({ title: "Missing fields", description: "Please provide a document name and select a file.", variant: "destructive"});
+        return;
+    }
+    if (!user || !userData || !shipment) return;
+
+    setIsUploading(true);
+
+    try {
+        // Create a storage reference
+        const storagePath = `shipment-documents/${shipment.id}/${fileToUpload.name}`;
+        const storageRef = ref(storage, storagePath);
+
+        // Upload file
+        const uploadResult = await uploadBytes(storageRef, fileToUpload);
+        const downloadUrl = await getDownloadURL(uploadResult.ref);
+
+        // Add document metadata to Firestore
+        await addDoc(collection(db, "shipments", shipment.id, "documents"), {
+            name: documentName,
+            url: downloadUrl,
+            path: storagePath,
+            uploadedBy: user.uid,
+            uploaderName: userData.name,
+            uploadedAt: serverTimestamp(),
+            fileType: fileToUpload.type,
+        });
+
+        toast({ title: "Success", description: "Document uploaded successfully." });
+        
+        // Reset form and close dialog
+        setDocumentName("");
+        setFileToUpload(null);
+        setIsUploadDialogOpen(false);
+
+    } catch (error) {
+        console.error("Error uploading document:", error);
+        toast({ title: "Upload Failed", description: "Could not upload the document. Please try again.", variant: "destructive"});
+    } finally {
+        setIsUploading(false);
     }
   };
 
@@ -235,7 +306,7 @@ export default function ShipmentDocumentsPage() {
                 <CardContent className="space-y-4 text-sm">
                     <div className="flex items-center gap-3 font-semibold">
                         <Building2 className="h-5 w-5 text-muted-foreground" />
-                        <span>{shipment?.winningCarrierLegalName || "Vendor Company Name"}</span>
+                        <span>{shipment?.winningCarrierName || "Vendor Company Name"}</span>
                     </div>
                     <Separator />
                     <div className="space-y-4">
@@ -280,7 +351,7 @@ export default function ShipmentDocumentsPage() {
                     <CardTitle>Shipment Documents</CardTitle>
                     <CardDescription>Manage all documents related to this shipment.</CardDescription>
                 </div>
-                <Dialog>
+                <Dialog open={isUploadDialogOpen} onOpenChange={setIsUploadDialogOpen}>
                     <DialogTrigger asChild>
                         <Button>
                             <PlusCircle className="mr-2 h-4 w-4" />
@@ -297,15 +368,19 @@ export default function ShipmentDocumentsPage() {
                         <div className="grid gap-4 py-4">
                             <div className="grid gap-2">
                                 <Label htmlFor="doc-name">Name of the Document</Label>
-                                <Input id="doc-name" placeholder="e.g., Bill of Lading" />
+                                <Input id="doc-name" placeholder="e.g., Bill of Lading" value={documentName} onChange={e => setDocumentName(e.target.value)} />
                             </div>
                             <div className="grid gap-2">
                                 <Label htmlFor="doc-file">Upload Document</Label>
-                                <Input id="doc-file" type="file" />
+                                <Input id="doc-file" type="file" onChange={e => setFileToUpload(e.target.files ? e.target.files[0] : null)} />
                             </div>
                         </div>
                         <DialogFooter>
-                            <Button type="submit">Upload</Button>
+                            <Button variant="outline" onClick={() => setIsUploadDialogOpen(false)} disabled={isUploading}>Cancel</Button>
+                            <Button onClick={handleUploadDocument} disabled={isUploading}>
+                                {isUploading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                {isUploading ? 'Uploading...' : 'Upload'}
+                            </Button>
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
@@ -322,11 +397,28 @@ export default function ShipmentDocumentsPage() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            <TableRow>
-                                <TableCell colSpan={4} className="h-24 text-center">
-                                    No documents have been uploaded yet.
-                                </TableCell>
-                            </TableRow>
+                            {documents.length > 0 ? (
+                                documents.map(doc => (
+                                    <TableRow key={doc.id}>
+                                        <TableCell className="font-medium">{doc.name}</TableCell>
+                                        <TableCell className="hidden md:table-cell">{doc.uploaderName}</TableCell>
+                                        <TableCell className="hidden md:table-cell">{doc.uploadedAt ? format(doc.uploadedAt.toDate(), 'PPp') : 'N/A'}</TableCell>
+                                        <TableCell className="text-right">
+                                            <Button variant="ghost" size="icon" asChild>
+                                                <a href={doc.url} target="_blank" rel="noopener noreferrer">
+                                                    <Download className="h-4 w-4" />
+                                                </a>
+                                            </Button>
+                                        </TableCell>
+                                    </TableRow>
+                                ))
+                            ) : (
+                                <TableRow>
+                                    <TableCell colSpan={4} className="h-24 text-center">
+                                        No documents have been uploaded yet.
+                                    </TableCell>
+                                </TableRow>
+                            )}
                         </TableBody>
                     </Table>
                 </div>
