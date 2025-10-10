@@ -201,7 +201,7 @@ export function ExporterVerificationForm({ user, userType }: VerificationFormPro
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-6">
-                         <div className="space-y-4">
+                        <div className="space-y-4">
                             <h3 className="text-lg font-medium">Company Details</h3>
                             <div className="grid gap-2">
                                 <Label htmlFor="company-name">Name of the Company</Label>
@@ -273,7 +273,7 @@ export function ExporterVerificationForm({ user, userType }: VerificationFormPro
                                             <Label htmlFor="license-number">License Number</Label>
                                             <Input id="license-number" value={licenseNumber} onChange={e => setLicenseNumber(e.target.value)} disabled={isSubmitting} />
                                         </div>
-                                         <FileInput id="license-file" onFileChange={handleFileChange(setLicenseFile)} disabled={isSubmitting} file={licenseFile} />
+                                        <FileInput id="license-file" onFileChange={handleFileChange(setLicenseFile)} disabled={isSubmitting} file={licenseFile} />
                                     </div>
                                      <div className="grid sm:grid-cols-2 gap-4">
                                          <div className="grid gap-2">
@@ -285,6 +285,7 @@ export function ExporterVerificationForm({ user, userType }: VerificationFormPro
                                                 <SelectContent>
                                                     <SelectItem value="individual">Individual</SelectItem>
                                                     <SelectItem value="company">Company</SelectItem>
+                                                    <SelectItem value="overseas">Overseas</SelectItem>
                                                 </SelectContent>
                                             </Select>
                                         </div>
