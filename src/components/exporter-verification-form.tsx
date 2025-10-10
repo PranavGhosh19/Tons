@@ -124,18 +124,18 @@ export function ExporterVerificationForm({ user, userType }: VerificationFormPro
                 companyDetails.iecCode = iecCode;
                 companyDetails.adCode = adCode;
 
-                if (gstFile) companyDetails.gstFile = await uploadFile(gstFile, 'gst');
-                if (panFile) companyDetails.panFile = await uploadFile(panFile, 'pan');
-                if (tanFile) companyDetails.tanFile = await uploadFile(tanFile, 'tan');
-                if (iecCodeFile) companyDetails.iecCodeFile = await uploadFile(iecCodeFile, 'iec');
-                if (adCodeFile) companyDetails.adCodeFile = await uploadFile(adCodeFile, 'ad');
+                if (gstFile) companyDetails.gstFileUrl = (await uploadFile(gstFile, 'gst')).url;
+                if (panFile) companyDetails.panFileUrl = (await uploadFile(panFile, 'pan')).url;
+                if (tanFile) companyDetails.tanFileUrl = (await uploadFile(tanFile, 'tan')).url;
+                if (iecCodeFile) companyDetails.iecCodeFileUrl = (await uploadFile(iecCodeFile, 'iec')).url;
+                if (adCodeFile) companyDetails.adCodeFileUrl = (await uploadFile(adCodeFile, 'ad')).url;
             }
 
             // Carrier specific fields and uploads
             if (isCarrier) {
                 companyDetails.licenseNumber = licenseNumber;
                 companyDetails.companyType = companyType;
-                if (incorporationCertificate) companyDetails.incorporationCertificate = await uploadFile(incorporationCertificate, 'incorporation-certificate');
+                if (incorporationCertificate) companyDetails.incorporationCertificateUrl = (await uploadFile(incorporationCertificate, 'incorporation-certificate')).url;
             }
             
             // Save all data to Firestore
@@ -183,9 +183,7 @@ export function ExporterVerificationForm({ user, userType }: VerificationFormPro
                                 <Label htmlFor="gst">GST Number</Label>
                                 <Input id="gst" value={gst} onChange={e => setGst(e.target.value)} disabled={isSubmitting} />
                             </div>
-                            {isExporter && (
-                                <FileInput id="gst-file" label="Upload GST" onFileChange={handleFileChange(setGstFile)} disabled={isSubmitting} file={gstFile} />
-                            )}
+                             {isExporter && <FileInput id="gst-file" label="Upload GST" onFileChange={handleFileChange(setGstFile)} disabled={isSubmitting} file={gstFile} />}
                         </div>
 
                          <div className="grid sm:grid-cols-2 gap-4">
@@ -193,9 +191,7 @@ export function ExporterVerificationForm({ user, userType }: VerificationFormPro
                                 <Label htmlFor="pan">PAN</Label>
                                 <Input id="pan" value={pan} onChange={e => setPan(e.target.value)} disabled={isSubmitting} />
                             </div>
-                            {isExporter && (
-                                <FileInput id="pan-file" label="Upload PAN" onFileChange={handleFileChange(setPanFile)} disabled={isSubmitting} file={panFile} />
-                            )}
+                            {isExporter && <FileInput id="pan-file" label="Upload PAN" onFileChange={handleFileChange(setPanFile)} disabled={isSubmitting} file={panFile} />}
                         </div>
 
 
@@ -276,5 +272,3 @@ export function ExporterVerificationForm({ user, userType }: VerificationFormPro
         </>
     );
 }
-
-    
