@@ -3,65 +3,38 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
 
-    // ───── Verification Documents ─────
-    // Documents uploaded by users during onboarding/verification.
-    match /verification-documents/{userType}/{userId}/{documentId} {
-      function isOwner() {
-        return request.auth.uid == userId;
-      }
-
-      function isValidDocument() {
-        let allowedFilenames = [
-          'incorporation-certificate',
-          'gst-certificate',
-          'pan-card',
-          'iec-certificate',
-          'ad-code',
-          'license-document'
-        ];
-        // Check if the documentId starts with one of the allowed names
-        return allowedFilenames.exists(name, documentId.matches(name + '-.*'));
-      }
-
-      function isEmployee() {
-        return get(/databases/(default)/documents/users/$(request.auth.uid)).data.userType == 'employee';
-      }
-
-      allow read: if request.auth != null && (isOwner() || isEmployee());
-      allow write: if request.auth != null && isOwner()
-                   && request.resource.size < 5 * 1024 * 1024
-                   && request.resource.contentType.matches('image/.*|application/pdf')
-                   && isValidDocument();
+    // Helper function to check user role from Firestore
+    function getUser(userId) {
+      return get(/databases/(default)/documents/users/$(userId));
     }
     
-    // ───── Shipment-Specific Documents ─────
-    match /shipments/{shipmentId}/{fileId} {
-
-      function isShipmentParticipant() {
-        let shipment = get(/databases/(default)/documents/shipments/$(shipmentId)).data;
-        return request.auth.uid == shipment.exporterId || request.auth.uid == shipment.winningCarrierId;
-      }
-      
-      function isEmployee() {
-        return get(/databases/(default)/documents/users/$(request.auth.uid)).data.userType == 'employee';
-      }
-
-      // READ: Employees or participants of this specific shipment
-      allow read: if request.auth != null && (isShipmentParticipant() || isEmployee());
-
-      // WRITE: Only the exporter or the winning carrier for this shipment can upload.
-      // The filename must start with their UID.
-      allow write: if request.auth != null 
-                    && isShipmentParticipant()
-                    && fileId.matches(request.auth.uid + '_.*')
-                    && request.resource.size < 5 * 1024 * 1024
-                    && request.resource.contentType.matches('image/.*|application/pdf|application/msword|application/vnd.openxmlformats-officedocument.wordprocessingml.document');
-
+    // Helper function to check shipment details
+    function getShipment(shipmentId) {
+        return get(/databases/(default)/documents/shipments/$(shipmentId));
     }
 
-    // ───── Default Deny Rule ─────
-    match /{allPaths=**} {
-      allow read, write: if false;
+    // Secure verification document uploads
+    // The path segments capture the userType and userId from the upload path
+    match /verification-documents/{userType}/{userId}/{fileName} {
+      // Allow write only if the userId in the path matches the authenticated user's ID
+      allow write: if request.auth != null && request.auth.uid == userId
+                    && request.resource.size < 5 * 1024 * 1024 // 5MB limit
+                    && request.resource.contentType.matches('image/.*|application/pdf');
+    }
+
+    // Secure shipment-specific document uploads
+    match /shipments/{shipmentId}/{fileId} {
+        // Allow read/write only by the exporter or the winning carrier of the shipment
+        allow read, write: if request.auth != null && (
+                            // Check if the user is the exporter
+                            getShipment(shipmentId).data.exporterId == request.auth.uid ||
+                            // Check if the user is the winning carrier
+                            getShipment(shipmentId).data.winningCarrierId == request.auth.uid
+                           )
+                           // Also verify that the filename is correctly formatted with the uploader's ID
+                           && fileId.matches(request.auth.uid + '_.*')
+                           && request.resource.size < 5 * 1024 * 1024
+                           && request.resource.contentType.matches('image/.*|application/pdf|application/vnd.openxmlformats-officedocument.spreadsheetml.sheet|application/vnd.ms-excel');
     }
   }
 }

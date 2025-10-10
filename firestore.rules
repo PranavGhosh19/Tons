@@ -20,48 +20,14 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/shipments/$(shipmentId));
     }
 
-    // ───── Verification Logic (for Exporter & Carrier) ─────
-    function isValidVerificationSubmission(requestData, resourceData, userId) {
-      let baseFields = [
-        'legalName',
-        'gstin',
-        'pan',
-        'incorporationCertificateUrl',
-        'incorporationCertificatePath'
-      ];
-
-      let exporterExtra = ['iecCode', 'adCode'];
-      let carrierExtra = ['licenseNumber', 'companyType'];
-
-      let userType =
-        resourceData.userType != null
-          ? resourceData.userType
-          : (requestData.userType != null ? requestData.userType : null);
-
-      let requiredKeys =
-        userType == 'exporter'
-          ? baseFields.concat(exporterExtra)
-          : userType == 'carrier'
-            ? baseFields.concat(carrierExtra)
-            : baseFields;
-
-      let hasAllKeys =
-        requestData.companyDetails is map &&
-        requestData.companyDetails.keys().hasAll(requiredKeys);
-
-      let validPath =
-        requestData.companyDetails.incorporationCertificatePath.matches(
-          'verification-documents/' + userType + '/' + userId + '/.*'
-        );
-
-      return hasAllKeys && validPath;
-    }
-
     // ───── Users Collection ─────
     match /users/{userId} {
-      allow read, update: if request.auth.uid == userId || isEmployee(request.auth.uid);
+      allow read: if request.auth.uid == userId || isEmployee(request.auth.uid);
       allow create: if request.auth.uid == userId
                     && request.resource.data.email == request.auth.token.email;
+
+      // UPDATE: Allow users to update their own name or verification details.
+      allow update: if request.auth.uid == userId;
     }
 
     // ───── Shipments Collection ─────
@@ -79,10 +45,12 @@ service cloud.firestore {
         isCarrier(request.auth.uid)
       );
 
-      // UPDATE: Exporter can modify based on shipment status or employee/carrier can add POC details
+      // UPDATE: Exporter can modify based on shipment status
       allow update: if request.auth.uid != null && (
+        // Employees can update any shipment (e.g., to go live)
         isEmployee(request.auth.uid) ||
         (
+          // Exporters can update their own shipments
           isExporter(request.auth.uid) &&
           resource.data.exporterId == request.auth.uid &&
           (
@@ -92,6 +60,7 @@ service cloud.firestore {
               request.resource.data.exporterId == resource.data.exporterId &&
               request.resource.data.createdAt == resource.data.createdAt
             ) ||
+
             // ② Allow exporter to award a live shipment (accepting a bid)
             (
               resource.data.status == 'live' &&
@@ -100,21 +69,8 @@ service cloud.firestore {
               request.resource.data.winningCarrierId != null &&
               request.resource.data.exporterId == resource.data.exporterId &&
               request.resource.data.createdAt == resource.data.createdAt
-            ) ||
-            // ③ Allow exporter to update their POC details on an awarded shipment
-            (
-              resource.data.status == 'awarded' &&
-              request.resource.data.keys().hasAll(['exporterPocFullName', 'exporterPocPhoneNumber']) &&
-              request.resource.data.size() == 2
             )
           )
-        ) ||
-        ( // ④ Allow winning carrier to update their POC details on an awarded shipment
-          isCarrier(request.auth.uid) &&
-          resource.data.winningCarrierId == request.auth.uid &&
-          resource.data.status == 'awarded' &&
-          request.resource.data.keys().hasAll(['vendorPocFullName', 'vendorPocPhoneNumber']) &&
-          request.resource.data.size() == 2
         )
       );
 
@@ -123,22 +79,16 @@ service cloud.firestore {
         isExporter(request.auth.uid) &&
         resource.data.exporterId == request.auth.uid &&
         resource.data.status == 'draft';
-    }
-    
-    // ───── Shipment Documents Subcollection ─────
-    match /shipments/{shipmentId}/documents/{documentId} {
-        function isShipmentParticipant() {
-            let shipment = getShipment(shipmentId).data;
-            return request.auth.uid == shipment.exporterId || request.auth.uid == shipment.winningCarrierId;
+
+        // ───── Documents Subcollection ─────
+        match /documents/{documentId} {
+            // Only Exporter, winning Carrier, or Employee can read/write documents
+            allow read, write: if request.auth.uid != null && (
+                isEmployee(request.auth.uid) ||
+                (getShipment(shipmentId).data.exporterId == request.auth.uid) ||
+                (getShipment(shipmentId).data.winningCarrierId == request.auth.uid)
+            );
         }
-
-        // READ: Participants (exporter, winner) or employee can read
-        allow read: if request.auth != null && (isShipmentParticipant() || isEmployee(request.auth.uid));
-
-        // CREATE: Participants can upload documents
-        allow create: if request.auth != null && isShipmentParticipant() &&
-                        request.resource.data.uploadedBy == request.auth.uid &&
-                        request.resource.data.path.matches('shipments/' + shipmentId + '/' + request.auth.uid + '_.*');
     }
 
     // ───── Bids Subcollection ─────
