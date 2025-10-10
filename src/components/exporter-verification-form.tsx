@@ -100,8 +100,8 @@ export function ExporterVerificationForm({ user, userType }: VerificationFormPro
 
     const handleSubmit = async () => {
         setIsConfirmOpen(false);
-        if (isExporter && (!companyName || !gst || !pan || !iecCode || !adCode)) {
-             toast({ title: "Missing Fields", description: "Please fill out all required text fields for exporters.", variant: "destructive" });
+        if (isExporter && (!companyName || !gst || !pan || !iecCode || !adCode || !incorporationCertificate)) {
+             toast({ title: "Missing Fields", description: "Please fill out all required text fields and upload all required documents for exporters.", variant: "destructive" });
              return;
         }
         if (isCarrier && (!companyName || !gst || !pan || !licenseNumber || !companyType || !incorporationCertificate)) {
@@ -118,26 +118,26 @@ export function ExporterVerificationForm({ user, userType }: VerificationFormPro
                 pan,
             };
 
+            // Uploads for both
+            if (gstFile) companyDetails.gstFileUrl = (await uploadFile(gstFile, 'gst')).url;
+            if (panFile) companyDetails.panFileUrl = (await uploadFile(panFile, 'pan')).url;
+            if (incorporationCertificate) companyDetails.incorporationCertificateUrl = (await uploadFile(incorporationCertificate, 'incorporation-certificate')).url;
+
             // Exporter specific fields and uploads
             if (isExporter) {
                 companyDetails.tan = tan;
                 companyDetails.iecCode = iecCode;
                 companyDetails.adCode = adCode;
 
-                if (gstFile) companyDetails.gstFileUrl = (await uploadFile(gstFile, 'gst')).url;
-                if (panFile) companyDetails.panFileUrl = (await uploadFile(panFile, 'pan')).url;
                 if (tanFile) companyDetails.tanFileUrl = (await uploadFile(tanFile, 'tan')).url;
                 if (iecCodeFile) companyDetails.iecCodeFileUrl = (await uploadFile(iecCodeFile, 'iec')).url;
                 if (adCodeFile) companyDetails.adCodeFileUrl = (await uploadFile(adCodeFile, 'ad')).url;
             }
 
-            // Carrier specific fields and uploads
+            // Carrier specific fields
             if (isCarrier) {
                 companyDetails.licenseNumber = licenseNumber;
                 companyDetails.companyType = companyType;
-                if (gstFile) companyDetails.gstFileUrl = (await uploadFile(gstFile, 'gst')).url;
-                if (panFile) companyDetails.panFileUrl = (await uploadFile(panFile, 'pan')).url;
-                if (incorporationCertificate) companyDetails.incorporationCertificateUrl = (await uploadFile(incorporationCertificate, 'incorporation-certificate')).url;
             }
             
             // Save all data to Firestore
@@ -180,7 +180,7 @@ export function ExporterVerificationForm({ user, userType }: VerificationFormPro
                         
                         <Separator />
 
-                        <div className="grid sm:grid-cols-2 gap-4">
+                        <div className="grid sm:grid-cols-2 gap-4 items-end">
                              <div className="grid gap-2">
                                 <Label htmlFor="gst">GST Number</Label>
                                 <Input id="gst" value={gst} onChange={e => setGst(e.target.value)} disabled={isSubmitting} />
@@ -188,7 +188,7 @@ export function ExporterVerificationForm({ user, userType }: VerificationFormPro
                              <FileInput id="gst-file" onFileChange={handleFileChange(setGstFile)} disabled={isSubmitting} file={gstFile} />
                         </div>
 
-                         <div className="grid sm:grid-cols-2 gap-4">
+                         <div className="grid sm:grid-cols-2 gap-4 items-end">
                             <div className="grid gap-2">
                                 <Label htmlFor="pan">PAN</Label>
                                 <Input id="pan" value={pan} onChange={e => setPan(e.target.value)} disabled={isSubmitting} />
@@ -200,26 +200,34 @@ export function ExporterVerificationForm({ user, userType }: VerificationFormPro
                         {isExporter && (
                             <>
                                 <Separator />
-                                <div className="grid sm:grid-cols-2 gap-4">
+                                <div className="grid sm:grid-cols-2 gap-4 items-end">
                                     <div className="grid gap-2">
                                         <Label htmlFor="tan">TAN (If registered)</Label>
                                         <Input id="tan" value={tan} onChange={e => setTan(e.target.value)} disabled={isSubmitting} />
                                     </div>
                                     <FileInput id="tan-file" onFileChange={handleFileChange(setTanFile)} disabled={isSubmitting} file={tanFile} />
                                 </div>
-                                <div className="grid sm:grid-cols-2 gap-4">
+                                <div className="grid sm:grid-cols-2 gap-4 items-end">
                                     <div className="grid gap-2">
                                         <Label htmlFor="iec">IEC Code</Label>
                                         <Input id="iec" value={iecCode} onChange={e => setIecCode(e.target.value)} disabled={isSubmitting} />
                                     </div>
                                      <FileInput id="iec-file" onFileChange={handleFileChange(setIecCodeFile)} disabled={isSubmitting} file={iecCodeFile} />
                                 </div>
-                                <div className="grid sm:grid-cols-2 gap-4">
+                                <div className="grid sm:grid-cols-2 gap-4 items-end">
                                     <div className="grid gap-2">
                                         <Label htmlFor="ad">AD Code</Label>
                                         <Input id="ad" value={adCode} onChange={e => setAdCode(e.target.value)} disabled={isSubmitting} />
                                     </div>
                                     <FileInput id="ad-file" onFileChange={handleFileChange(setAdCodeFile)} disabled={isSubmitting} file={adCodeFile} />
+                                </div>
+                                <Separator />
+                                <div className="grid sm:grid-cols-2 gap-4 items-end">
+                                    <div className="grid gap-2">
+                                        <Label>Incorporation Certificate</Label>
+                                        <p className="text-xs text-muted-foreground">Required for verification.</p>
+                                    </div>
+                                    <FileInput id="incorporation-cert-exporter" onFileChange={handleFileChange(setIncorporationCertificate)} disabled={isSubmitting} file={incorporationCertificate} />
                                 </div>
                             </>
                         )}
@@ -244,9 +252,13 @@ export function ExporterVerificationForm({ user, userType }: VerificationFormPro
                                         </Select>
                                     </div>
                                 </div>
-                                <div className="grid gap-2">
-                                  <Label>Incorporation Certificate</Label>
-                                  <FileInput id="incorporation-cert" onFileChange={handleFileChange(setIncorporationCertificate)} disabled={isSubmitting} file={incorporationCertificate} />
+                                 <Separator />
+                                <div className="grid sm:grid-cols-2 gap-4 items-end">
+                                  <div className="grid gap-2">
+                                    <Label>Incorporation Certificate</Label>
+                                    <p className="text-xs text-muted-foreground">Required for verification.</p>
+                                  </div>
+                                  <FileInput id="incorporation-cert-carrier" onFileChange={handleFileChange(setIncorporationCertificate)} disabled={isSubmitting} file={incorporationCertificate} />
                                 </div>
                             </>
                         )}
@@ -277,5 +289,3 @@ export function ExporterVerificationForm({ user, userType }: VerificationFormPro
         </>
     );
 }
-
-    
