@@ -135,6 +135,8 @@ export function ExporterVerificationForm({ user, userType }: VerificationFormPro
             if (isCarrier) {
                 companyDetails.licenseNumber = licenseNumber;
                 companyDetails.companyType = companyType;
+                if (gstFile) companyDetails.gstFileUrl = (await uploadFile(gstFile, 'gst')).url;
+                if (panFile) companyDetails.panFileUrl = (await uploadFile(panFile, 'pan')).url;
                 if (incorporationCertificate) companyDetails.incorporationCertificateUrl = (await uploadFile(incorporationCertificate, 'incorporation-certificate')).url;
             }
             
@@ -183,7 +185,7 @@ export function ExporterVerificationForm({ user, userType }: VerificationFormPro
                                 <Label htmlFor="gst">GST Number</Label>
                                 <Input id="gst" value={gst} onChange={e => setGst(e.target.value)} disabled={isSubmitting} />
                             </div>
-                             {isExporter && <FileInput id="gst-file" label="Upload GST" onFileChange={handleFileChange(setGstFile)} disabled={isSubmitting} file={gstFile} />}
+                             <FileInput id="gst-file" label="Upload GST" onFileChange={handleFileChange(setGstFile)} disabled={isSubmitting} file={gstFile} />
                         </div>
 
                          <div className="grid sm:grid-cols-2 gap-4">
@@ -191,7 +193,7 @@ export function ExporterVerificationForm({ user, userType }: VerificationFormPro
                                 <Label htmlFor="pan">PAN</Label>
                                 <Input id="pan" value={pan} onChange={e => setPan(e.target.value)} disabled={isSubmitting} />
                             </div>
-                            {isExporter && <FileInput id="pan-file" label="Upload PAN" onFileChange={handleFileChange(setPanFile)} disabled={isSubmitting} file={panFile} />}
+                            <FileInput id="pan-file" label="Upload PAN" onFileChange={handleFileChange(setPanFile)} disabled={isSubmitting} file={panFile} />
                         </div>
 
 
