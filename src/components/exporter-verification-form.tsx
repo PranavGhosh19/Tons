@@ -75,6 +75,7 @@ export function ExporterVerificationForm({ user, userType }: VerificationFormPro
     const [tanFile, setTanFile] = useState<File | null>(null);
     const [iecCodeFile, setIecCodeFile] = useState<File | null>(null);
     const [adCodeFile, setAdCodeFile] = useState<File | null>(null);
+    const [licenseFile, setLicenseFile] = useState<File | null>(null);
     const [incorporationCertificate, setIncorporationCertificate] = useState<File | null>(null);
 
     // UI state
@@ -160,6 +161,11 @@ export function ExporterVerificationForm({ user, userType }: VerificationFormPro
             if (isCarrier) {
                 companyDetails.licenseNumber = licenseNumber;
                 companyDetails.companyType = companyType;
+                if (licenseFile) {
+                  const licenseUpload = await uploadFile(licenseFile, 'license');
+                  companyDetails.licenseFileUrl = licenseUpload.url;
+                  companyDetails.licenseFilePath = licenseUpload.path;
+                }
             }
             
             // Save all data to Firestore
@@ -195,14 +201,14 @@ export function ExporterVerificationForm({ user, userType }: VerificationFormPro
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-6">
-                        <div className="space-y-4">
+                         <div className="space-y-4">
                             <h3 className="text-lg font-medium">Company Details</h3>
                             <div className="grid gap-2">
                                 <Label htmlFor="company-name">Name of the Company</Label>
                                 <Input id="company-name" value={companyName} onChange={e => setCompanyName(e.target.value)} disabled={isSubmitting} />
                             </div>
                         </div>
-                        
+
                         <Separator />
 
                         <div className="space-y-4">
@@ -237,7 +243,6 @@ export function ExporterVerificationForm({ user, userType }: VerificationFormPro
                         {isExporter && (
                             <>
                                 <Separator />
-
                                 <div className="space-y-4">
                                      <h3 className="text-lg font-medium">Import/Export Codes</h3>
                                      <div className="grid sm:grid-cols-2 gap-4 items-end">
@@ -257,16 +262,20 @@ export function ExporterVerificationForm({ user, userType }: VerificationFormPro
                                 </div>
                             </>
                         )}
+                        
                         {isCarrier && (
                             <>
                                 <Separator />
                                 <div className="space-y-4">
                                     <h3 className="text-lg font-medium">Carrier Details</h3>
-                                    <div className="grid sm:grid-cols-2 gap-4">
+                                    <div className="grid sm:grid-cols-2 gap-4 items-end">
                                         <div className="grid gap-2">
                                             <Label htmlFor="license-number">License Number</Label>
                                             <Input id="license-number" value={licenseNumber} onChange={e => setLicenseNumber(e.target.value)} disabled={isSubmitting} />
                                         </div>
+                                         <FileInput id="license-file" onFileChange={handleFileChange(setLicenseFile)} disabled={isSubmitting} file={licenseFile} />
+                                    </div>
+                                     <div className="grid sm:grid-cols-2 gap-4">
                                          <div className="grid gap-2">
                                             <Label htmlFor="company-type">Company Type</Label>
                                             <Select value={companyType} onValueChange={setCompanyType} disabled={isSubmitting}>
