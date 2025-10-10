@@ -114,14 +114,24 @@ export function ExporterVerificationForm({ user, userType }: VerificationFormPro
         try {
             const companyDetails: any = {
                 legalName: companyName,
-                gstin: gst,
                 pan,
             };
 
-            // Uploads for both
-            if (gstFile) companyDetails.gstFileUrl = (await uploadFile(gstFile, 'gst')).url;
-            if (panFile) companyDetails.panFileUrl = (await uploadFile(panFile, 'pan')).url;
-            if (incorporationCertificate) companyDetails.incorporationCertificateUrl = (await uploadFile(incorporationCertificate, 'incorporation-certificate')).url;
+            if (gstFile) {
+              const gstUpload = await uploadFile(gstFile, 'gst');
+              companyDetails.gstFileUrl = gstUpload.url;
+              companyDetails.gstFilePath = gstUpload.path;
+            }
+            if (panFile) {
+              const panUpload = await uploadFile(panFile, 'pan');
+              companyDetails.panFileUrl = panUpload.url;
+              companyDetails.panFilePath = panUpload.path;
+            }
+            if (incorporationCertificate) {
+              const incUpload = await uploadFile(incorporationCertificate, 'incorporation-certificate');
+              companyDetails.incorporationCertificateUrl = incUpload.url;
+              companyDetails.incorporationCertificatePath = incUpload.path;
+            }
 
             // Exporter specific fields and uploads
             if (isExporter) {
@@ -129,9 +139,21 @@ export function ExporterVerificationForm({ user, userType }: VerificationFormPro
                 companyDetails.iecCode = iecCode;
                 companyDetails.adCode = adCode;
 
-                if (tanFile) companyDetails.tanFileUrl = (await uploadFile(tanFile, 'tan')).url;
-                if (iecCodeFile) companyDetails.iecCodeFileUrl = (await uploadFile(iecCodeFile, 'iec')).url;
-                if (adCodeFile) companyDetails.adCodeFileUrl = (await uploadFile(adCodeFile, 'ad')).url;
+                if (tanFile) {
+                    const tanUpload = await uploadFile(tanFile, 'tan');
+                    companyDetails.tanFileUrl = tanUpload.url;
+                    companyDetails.tanFilePath = tanUpload.path;
+                }
+                if (iecCodeFile) {
+                    const iecUpload = await uploadFile(iecCodeFile, 'iec');
+                    companyDetails.iecCodeFileUrl = iecUpload.url;
+                    companyDetails.iecCodeFilePath = iecUpload.path;
+                }
+                if (adCodeFile) {
+                    const adUpload = await uploadFile(adCodeFile, 'ad');
+                    companyDetails.adCodeFileUrl = adUpload.url;
+                    companyDetails.adCodeFilePath = adUpload.path;
+                }
             }
 
             // Carrier specific fields
@@ -174,6 +196,7 @@ export function ExporterVerificationForm({ user, userType }: VerificationFormPro
                     </CardHeader>
                     <CardContent className="space-y-6">
                         <div className="space-y-4">
+                            <h3 className="text-lg font-medium">Company Details</h3>
                             <div className="grid gap-2">
                                 <Label htmlFor="company-name">Name of the Company</Label>
                                 <Input id="company-name" value={companyName} onChange={e => setCompanyName(e.target.value)} disabled={isSubmitting} />
@@ -183,7 +206,7 @@ export function ExporterVerificationForm({ user, userType }: VerificationFormPro
                         <Separator />
 
                         <div className="space-y-4">
-                            <h3 className="text-lg font-medium">Tax & Registration</h3>
+                            <h3 className="text-lg font-medium">Tax Information</h3>
                             <div className="grid sm:grid-cols-2 gap-4 items-end">
                                  <div className="grid gap-2">
                                     <Label htmlFor="gst">GST Number</Label>
@@ -199,19 +222,20 @@ export function ExporterVerificationForm({ user, userType }: VerificationFormPro
                                 </div>
                                 <FileInput id="pan-file" onFileChange={handleFileChange(setPanFile)} disabled={isSubmitting} file={panFile} />
                             </div>
+                            
+                            {isExporter && (
+                                <div className="grid sm:grid-cols-2 gap-4 items-end">
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="tan">TAN (If registered)</Label>
+                                        <Input id="tan" value={tan} onChange={e => setTan(e.target.value)} disabled={isSubmitting} />
+                                    </div>
+                                    <FileInput id="tan-file" onFileChange={handleFileChange(setTanFile)} disabled={isSubmitting} file={tanFile} />
+                                </div>
+                            )}
                         </div>
 
                         {isExporter && (
                             <>
-                                <div className="space-y-4">
-                                     <div className="grid sm:grid-cols-2 gap-4 items-end">
-                                        <div className="grid gap-2">
-                                            <Label htmlFor="tan">TAN (If registered)</Label>
-                                            <Input id="tan" value={tan} onChange={e => setTan(e.target.value)} disabled={isSubmitting} />
-                                        </div>
-                                        <FileInput id="tan-file" onFileChange={handleFileChange(setTanFile)} disabled={isSubmitting} file={tanFile} />
-                                    </div>
-                                </div>
                                 <Separator />
 
                                 <div className="space-y-4">
@@ -230,12 +254,6 @@ export function ExporterVerificationForm({ user, userType }: VerificationFormPro
                                         </div>
                                         <FileInput id="ad-file" onFileChange={handleFileChange(setAdCodeFile)} disabled={isSubmitting} file={adCodeFile} />
                                     </div>
-                                </div>
-
-                                 <Separator />
-                                <div className="space-y-4">
-                                    <h3 className="text-lg font-medium">Incorporation Certificate</h3>
-                                    <FileInput id="incorporation-cert-exporter" onFileChange={handleFileChange(setIncorporationCertificate)} disabled={isSubmitting} file={incorporationCertificate} />
                                 </div>
                             </>
                         )}
@@ -263,13 +281,14 @@ export function ExporterVerificationForm({ user, userType }: VerificationFormPro
                                         </div>
                                     </div>
                                 </div>
-                                 <Separator />
-                                <div className="space-y-4">
-                                    <h3 className="text-lg font-medium">Incorporation Certificate</h3>
-                                    <FileInput id="incorporation-cert-carrier" onFileChange={handleFileChange(setIncorporationCertificate)} disabled={isSubmitting} file={incorporationCertificate} />
-                                </div>
                             </>
                         )}
+
+                        <Separator />
+                        <div className="space-y-4">
+                            <h3 className="text-lg font-medium">Incorporation Certificate</h3>
+                            <FileInput id="incorporation-cert" onFileChange={handleFileChange(setIncorporationCertificate)} disabled={isSubmitting} file={incorporationCertificate} />
+                        </div>
                     </CardContent>
                     <CardFooter>
                         <Button onClick={() => setIsConfirmOpen(true)} disabled={isSubmitting} className="w-full h-12 text-lg">
