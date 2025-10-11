@@ -1,40 +1,10 @@
 rules_version = '2';
-
 service firebase.storage {
   match /b/{bucket}/o {
-
-    // Helper function to check user role from Firestore
-    function getUser(userId) {
-      return get(/databases/(default)/documents/users/$(userId));
-    }
-    
-    // Helper function to check shipment details
-    function getShipment(shipmentId) {
-        return get(/databases/(default)/documents/shipments/$(shipmentId));
-    }
-
-    // Secure verification document uploads
-    // The path segments capture the userType and userId from the upload path
-    match /verification-documents/{userType}/{userId}/{fileName} {
-      // Allow write only if the userId in the path matches the authenticated user's ID
-      allow write: if request.auth != null && request.auth.uid == userId
-                    && request.resource.size < 5 * 1024 * 1024 // 5MB limit
-                    && request.resource.contentType.matches('image/.*|application/pdf');
-    }
-
-    // Secure shipment-specific document uploads
-    match /shipments/{shipmentId}/{fileId} {
-        // Allow read/write only by the exporter or the winning carrier of the shipment
-        allow read, write: if request.auth != null && (
-                            // Check if the user is the exporter
-                            getShipment(shipmentId).data.exporterId == request.auth.uid ||
-                            // Check if the user is the winning carrier
-                            getShipment(shipmentId).data.winningCarrierId == request.auth.uid
-                           )
-                           // Also verify that the filename is correctly formatted with the uploader's ID
-                           && fileId.matches(request.auth.uid + '_.*')
-                           && request.resource.size < 5 * 1024 * 1024
-                           && request.resource.contentType.matches('image/.*|application/pdf|application/vnd.openxmlformats-officedocument.spreadsheetml.sheet|application/vnd.ms-excel');
+    // Allow users to upload verification documents to their own folder.
+    // The path format is: verification-documents/{userType}/{userId}/{fileName}
+    match /verification-documents/{userType}/{userId}/{allPaths=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
     }
   }
 }
