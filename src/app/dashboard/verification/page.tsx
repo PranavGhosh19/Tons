@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/dialog"
 import Link from "next/link";
 import { Separator } from "@/components/ui/separator";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 export default function VerificationPage() {
   const [user, setUser] = useState<User | null>(null);
@@ -186,63 +187,65 @@ export default function VerificationPage() {
                                                             Review the information submitted by {selectedUser?.name}.
                                                         </DialogDescription>
                                                     </DialogHeader>
-                                                    {selectedUser?.companyDetails ? (
-                                                        <div className="py-4 space-y-4">
-                                                            <dl className="space-y-1">
-                                                                <InfoRow label="Legal Name" value={selectedUser.companyDetails.legalName} />
+                                                    <ScrollArea className="max-h-[60vh] pr-6 -mr-6">
+                                                        {selectedUser?.companyDetails ? (
+                                                            <div className="py-4 space-y-4">
+                                                                <dl className="space-y-1">
+                                                                    <InfoRow label="Legal Name" value={selectedUser.companyDetails.legalName} />
+                                                                    <InfoRow 
+                                                                        label="GST" 
+                                                                        value={selectedUser.gstin} 
+                                                                        hasDocument={!!selectedUser.companyDetails.gstFileUrl}
+                                                                        onPreviewClick={() => handleOpenPreview(selectedUser.companyDetails.gstFileUrl)}
+                                                                    />
+                                                                    <InfoRow 
+                                                                        label="PAN" 
+                                                                        value={selectedUser.companyDetails.pan}
+                                                                        hasDocument={!!selectedUser.companyDetails.panFileUrl}
+                                                                        onPreviewClick={() => handleOpenPreview(selectedUser.companyDetails.panFileUrl)}
+                                                                    />
+                                                                    {selectedUser.userType === 'exporter' ? (
+                                                                        <>
+                                                                            <InfoRow 
+                                                                                label="TAN" 
+                                                                                value={selectedUser.companyDetails.tan}
+                                                                                hasDocument={!!selectedUser.companyDetails.tanFileUrl}
+                                                                                onPreviewClick={() => handleOpenPreview(selectedUser.companyDetails.tanFileUrl)}
+                                                                            />
+                                                                            <InfoRow 
+                                                                                label="IEC Code" 
+                                                                                value={selectedUser.companyDetails.iecCode}
+                                                                                hasDocument={!!selectedUser.companyDetails.iecCodeFileUrl}
+                                                                                onPreviewClick={() => handleOpenPreview(selectedUser.companyDetails.iecCodeFileUrl)}
+                                                                            />
+                                                                            <InfoRow 
+                                                                                label="AD Code" 
+                                                                                value={selectedUser.companyDetails.adCode}
+                                                                                hasDocument={!!selectedUser.companyDetails.adCodeFileUrl}
+                                                                                onPreviewClick={() => handleOpenPreview(selectedUser.companyDetails.adCodeFileUrl)}
+                                                                            />
+                                                                        </>
+                                                                    ) : (
+                                                                        <>
+                                                                            <InfoRow 
+                                                                                label="License Number" 
+                                                                                value={selectedUser.companyDetails.licenseNumber}
+                                                                                hasDocument={!!selectedUser.companyDetails.licenseFileUrl}
+                                                                                onPreviewClick={() => handleOpenPreview(selectedUser.companyDetails.licenseFileUrl)}
+                                                                            />
+                                                                            <InfoRow label="Company Type" value={selectedUser.companyDetails.companyType} />
+                                                                        </>
+                                                                    )}
+                                                                </dl>
+                                                                <Separator />
                                                                 <InfoRow 
-                                                                    label="GST" 
-                                                                    value={selectedUser.gstin} 
-                                                                    hasDocument={!!selectedUser.companyDetails.gstFileUrl}
-                                                                    onPreviewClick={() => handleOpenPreview(selectedUser.companyDetails.gstFileUrl)}
+                                                                    label="Incorporation Certificate" 
+                                                                    hasDocument={!!selectedUser.companyDetails.incorporationCertificateUrl}
+                                                                    onPreviewClick={() => handleOpenPreview(selectedUser.companyDetails.incorporationCertificateUrl)}
                                                                 />
-                                                                <InfoRow 
-                                                                    label="PAN" 
-                                                                    value={selectedUser.companyDetails.pan}
-                                                                    hasDocument={!!selectedUser.companyDetails.panFileUrl}
-                                                                    onPreviewClick={() => handleOpenPreview(selectedUser.companyDetails.panFileUrl)}
-                                                                />
-                                                                {selectedUser.userType === 'exporter' ? (
-                                                                    <>
-                                                                        <InfoRow 
-                                                                            label="TAN" 
-                                                                            value={selectedUser.companyDetails.tan}
-                                                                            hasDocument={!!selectedUser.companyDetails.tanFileUrl}
-                                                                            onPreviewClick={() => handleOpenPreview(selectedUser.companyDetails.tanFileUrl)}
-                                                                        />
-                                                                        <InfoRow 
-                                                                            label="IEC Code" 
-                                                                            value={selectedUser.companyDetails.iecCode}
-                                                                            hasDocument={!!selectedUser.companyDetails.iecCodeFileUrl}
-                                                                            onPreviewClick={() => handleOpenPreview(selectedUser.companyDetails.iecCodeFileUrl)}
-                                                                        />
-                                                                        <InfoRow 
-                                                                            label="AD Code" 
-                                                                            value={selectedUser.companyDetails.adCode}
-                                                                            hasDocument={!!selectedUser.companyDetails.adCodeFileUrl}
-                                                                            onPreviewClick={() => handleOpenPreview(selectedUser.companyDetails.adCodeFileUrl)}
-                                                                        />
-                                                                    </>
-                                                                ) : (
-                                                                    <>
-                                                                        <InfoRow 
-                                                                            label="License Number" 
-                                                                            value={selectedUser.companyDetails.licenseNumber}
-                                                                            hasDocument={!!selectedUser.companyDetails.licenseFileUrl}
-                                                                            onPreviewClick={() => handleOpenPreview(selectedUser.companyDetails.licenseFileUrl)}
-                                                                        />
-                                                                        <InfoRow label="Company Type" value={selectedUser.companyDetails.companyType} />
-                                                                    </>
-                                                                )}
-                                                            </dl>
-                                                            <Separator />
-                                                            <InfoRow 
-                                                                label="Incorporation Certificate" 
-                                                                hasDocument={!!selectedUser.companyDetails.incorporationCertificateUrl}
-                                                                onPreviewClick={() => handleOpenPreview(selectedUser.companyDetails.incorporationCertificateUrl)}
-                                                            />
-                                                        </div>
-                                                    ) : <p className="py-4 text-muted-foreground">No company details submitted.</p>}
+                                                            </div>
+                                                        ) : <p className="py-4 text-muted-foreground">No company details submitted.</p>}
+                                                    </ScrollArea>
                                                     <DialogFooter>
                                                         <AlertDialog>
                                                             <AlertDialogTrigger asChild>
