@@ -4,8 +4,8 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { onAuthStateChanged, User } from "firebase/auth";
-import { doc, getDoc, DocumentData, updateDoc, collection, addDoc, serverTimestamp, query, orderBy, onSnapshot } from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { doc, getDoc, DocumentData, updateDoc, collection, addDoc, serverTimestamp, query, orderBy, onSnapshot, setDoc, deleteDoc } from "firebase/firestore";
+import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import { auth, db, storage } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -19,7 +19,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format } from "date-fns";
 import { errorEmitter } from "@/firebase/error-emitter";
-import { FirestorePermissionError } from "@/firebase/errors";
+import { FirestorePermissionError, type SecurityRuleContext } from "@/firebase/errors";
+import { Badge } from "@/components/ui/badge";
 
 
 const InfoCardSkeleton = () => (
@@ -41,16 +42,16 @@ export default function ShipmentDocumentsPage() {
   const [shipment, setShipment] = useState<DocumentData | null>(null);
   const [documents, setDocuments] = useState<DocumentData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deletingDocId, setDeletingDocId] = useState<string | null>(null);
 
-  // Exporter POC Input State
-  const [exporterPocFullName, setExporterPocFullName] = useState("");
-  const [exporterPocPhoneNumber, setExporterPocPhoneNumber] = useState("");
+  // POC Input State
+  const [exporterFullName, setExporterFullName] = useState("");
+  const [exporterPhoneNumber, setExporterPhoneNumber] = useState("");
   const [isSavingExporter, setIsSavingExporter] = useState(false);
 
-  // Vendor POC Input State
-  const [vendorPocFullName, setVendorPocFullName] = useState("");
-  const [vendorPocPhoneNumber, setVendorPocPhoneNumber] = useState("");
-  const [isSavingVendor, setIsSavingVendor] = useState(false);
+  const [carrierFullName, setCarrierFullName] = useState("");
+  const [carrierPhoneNumber, setCarrierPhoneNumber] = useState("");
+  const [isSavingCarrier, setIsSavingCarrier] = useState(false);
 
   // Upload Dialog State
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
@@ -83,26 +84,38 @@ export default function ShipmentDocumentsPage() {
 
   useEffect(() => {
     if (!user || !userType || !shipmentId) return;
+    
+    let unsubShipment: () => void = () => {};
+    let unsubContacts: () => void = () => {};
 
-    const fetchShipmentDetails = async () => {
+    const setupListeners = async () => {
         setLoading(true);
-        try {
-            const shipmentDocRef = doc(db, "shipments", shipmentId);
-            const docSnap = await getDoc(shipmentDocRef);
-
+        const shipmentDocRef = doc(db, "shipments", shipmentId);
+        
+        unsubShipment = onSnapshot(shipmentDocRef, (docSnap) => {
             if (docSnap.exists()) {
                 const shipmentData = docSnap.data();
-                
                 const isOwner = shipmentData.exporterId === user.uid;
                 const isWinningCarrier = shipmentData.winningCarrierId === user.uid;
                 const isEmployee = userType === 'employee';
 
                 if (shipmentData.status === 'awarded' && (isOwner || isWinningCarrier || isEmployee)) {
                     setShipment({ id: docSnap.id, ...shipmentData });
-                    setExporterPocFullName(shipmentData.exporterPocFullName || '');
-                    setExporterPocPhoneNumber(shipmentData.exporterPocPhoneNumber || '');
-                    setVendorPocFullName(shipmentData.vendorPocFullName || '');
-                    setVendorPocPhoneNumber(shipmentData.vendorPocPhoneNumber || '');
+
+                    // Listen for Contacts Info
+                    const contactsDocRef = doc(db, "shipments", shipmentId, "documents", `${shipmentId}-contacts`);
+                    unsubContacts = onSnapshot(contactsDocRef, (contactSnap) => {
+                        if (contactSnap.exists()) {
+                            const contactData = contactSnap.data();
+                            setExporterFullName(contactData.exporterFullName || '');
+                            setExporterPhoneNumber(contactData.exporterPhoneNumber || '');
+                            setCarrierFullName(contactData.carrierFullName || '');
+                            setCarrierPhoneNumber(contactData.carrierPhoneNumber || '');
+                        }
+                    }, async (error) => {
+                        const permissionError = new FirestorePermissionError({ path: contactsDocRef.path, operation: 'get' } satisfies SecurityRuleContext);
+                        errorEmitter.emit('permission-error', permissionError);
+                    });
                 } else {
                     toast({ title: "Unauthorized", description: "You don't have permission to view these documents.", variant: "destructive" });
                     router.push(`/dashboard`);
@@ -111,15 +124,20 @@ export default function ShipmentDocumentsPage() {
                 toast({ title: "Error", description: "Shipment not found.", variant: "destructive" });
                 router.push("/dashboard");
             }
-        } catch (error) {
-            console.error("Error fetching data: ", error);
-            toast({ title: "Error", description: "Failed to fetch shipment details.", variant: "destructive" });
-        } finally {
+             setLoading(false);
+        }, async (error) => {
+            const permissionError = new FirestorePermissionError({ path: shipmentDocRef.path, operation: 'get' } satisfies SecurityRuleContext);
+            errorEmitter.emit('permission-error', permissionError);
             setLoading(false);
-        }
+        });
     }
     
-    fetchShipmentDetails();
+    setupListeners();
+
+    return () => {
+        if (unsubShipment) unsubShipment();
+        if (unsubContacts) unsubContacts();
+    }
 
   }, [user, userType, shipmentId, router, toast]);
 
@@ -129,105 +147,125 @@ export default function ShipmentDocumentsPage() {
         const documentsQuery = query(collection(db, "shipments", shipmentId, "documents"), orderBy("uploadedAt", "desc"));
         const unsubscribe = onSnapshot(documentsQuery, (querySnapshot) => {
             const docsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            setDocuments(docsData);
-        }, (error) => {
-            console.error("Error fetching documents:", error);
-            toast({ title: "Error", description: "Could not load shipment documents.", variant: "destructive"});
+            setDocuments(docsData.filter(d => d.id !== `${shipmentId}-contacts`));
+        }, async (error) => {
+             const permissionError = new FirestorePermissionError({ path: `shipments/${shipmentId}/documents`, operation: 'list' } satisfies SecurityRuleContext);
+            errorEmitter.emit('permission-error', permissionError);
         });
 
         return () => unsubscribe();
     }, [shipmentId, toast]);
 
 
-  const handlePocUpdate = async (type: 'exporter' | 'vendor') => {
-    if (!shipment) return;
+  const handlePocUpdate = (pocUserType: 'exporter' | 'carrier') => {
+    if (!shipment || !user) return;
 
-    let dataToUpdate = {};
-    let successMessage = "";
+    let dataToUpdate;
+    let pocStateSetter: React.Dispatch<React.SetStateAction<boolean>>;
+    let successMessage: string;
 
-    if (type === 'exporter') {
-        setIsSavingExporter(true);
-        dataToUpdate = {
-            exporterPocFullName: exporterPocFullName,
-            exporterPocPhoneNumber: exporterPocPhoneNumber
-        };
-        successMessage = "Exporter's contact details have been updated.";
+    if (pocUserType === 'exporter') {
+        dataToUpdate = { exporterFullName, exporterPhoneNumber };
+        pocStateSetter = setIsSavingExporter;
+        successMessage = "Exporter's contact details updated.";
     } else {
-        setIsSavingVendor(true);
-        dataToUpdate = {
-            vendorPocFullName: vendorPocFullName,
-            vendorPocPhoneNumber: vendorPocPhoneNumber
-        };
-        successMessage = "Vendor's contact details have been updated.";
+        dataToUpdate = { carrierFullName, carrierPhoneNumber };
+        pocStateSetter = setIsSavingCarrier;
+        successMessage = "Carrier's contact details updated.";
     }
+
+    pocStateSetter(true);
+    const contactDocRef = doc(db, "shipments", shipment.id, "documents", `${shipment.id}-contacts`);
     
-    try {
-        const shipmentDocRef = doc(db, "shipments", shipment.id);
-        await updateDoc(shipmentDocRef, dataToUpdate);
+    setDoc(contactDocRef, dataToUpdate, { merge: true }).then(() => {
         toast({ title: "Success", description: successMessage });
-    } catch (error) {
-        console.error(`Error saving ${type} POC details:`, error);
-        toast({ title: "Error", description: "Failed to save contact details.", variant: "destructive" });
-    } finally {
-        if (type === 'exporter') setIsSavingExporter(false);
-        else setIsSavingVendor(false);
-    }
+    }).catch(async (serverError) => {
+        const permissionError = new FirestorePermissionError({
+            path: contactDocRef.path,
+            operation: 'update',
+            requestResourceData: dataToUpdate,
+        });
+        errorEmitter.emit('permission-error', permissionError);
+    }).finally(() => {
+        pocStateSetter(false);
+    });
   };
 
   const handleUploadDocument = async () => {
-    if (!fileToUpload || !documentName) {
-        toast({ title: "Missing fields", description: "Please provide a document name and select a file.", variant: "destructive"});
+    if (!fileToUpload) {
+        toast({ title: "Missing file", description: "Please select a file to upload.", variant: "destructive"});
         return;
     }
     if (!user || !userData || !shipment) return;
 
+    const finalDocumentName = documentName || fileToUpload.name;
+
     setIsUploading(true);
 
     try {
-        // Create a storage reference
-        const storagePath = `shipments/${shipment.id}/${user.uid}_${fileToUpload.name}`;
+        const storagePath = `shipments/${shipment.id}/contacts/${user.uid}/${Date.now()}_${fileToUpload.name}`;
         const storageRef = ref(storage, storagePath);
 
-        // Upload file
         const uploadResult = await uploadBytes(storageRef, fileToUpload);
         const downloadUrl = await getDownloadURL(uploadResult.ref);
 
-        // Add document metadata to Firestore
         const documentsRef = collection(db, "shipments", shipment.id, "documents");
         const newDocumentPayload = {
-            name: documentName,
+            name: finalDocumentName,
             url: downloadUrl,
             path: storagePath,
             uploadedBy: user.uid,
             uploaderName: userData.name,
+            uploaderType: userData.userType,
             uploadedAt: serverTimestamp(),
             fileType: fileToUpload.type,
         };
+        
+        const newDocRef = doc(documentsRef);
+        setDoc(newDocRef, newDocumentPayload).catch(async (serverError) => {
+            const permissionError = new FirestorePermissionError({
+                path: newDocRef.path,
+                operation: 'create',
+                requestResourceData: newDocumentPayload,
+            });
+            errorEmitter.emit('permission-error', permissionError);
+        });
 
-        addDoc(documentsRef, newDocumentPayload)
-          .then(() => {
-              toast({ title: "Success", description: "Document uploaded successfully." });
-              setDocumentName("");
-              setFileToUpload(null);
-              setIsUploadDialogOpen(false);
-          })
-          .catch(async (serverError) => {
-              const permissionError = new FirestorePermissionError({
-                  path: documentsRef.path,
-                  operation: 'create',
-                  requestResourceData: newDocumentPayload,
-              });
-              errorEmitter.emit('permission-error', permissionError);
-          });
+
+        toast({ title: "Success", description: "Document uploaded successfully." });
+        setDocumentName("");
+        setFileToUpload(null);
+        setIsUploadDialogOpen(false);
 
     } catch (error) {
-        // This will now primarily catch storage errors, not Firestore permission errors
-        console.error("Error uploading file to storage:", error);
-        toast({ title: "Upload Failed", description: "Could not upload the file. Please try again.", variant: "destructive"});
+        console.error("Error uploading file:", error);
+        toast({ title: "Upload Failed", description: "Could not upload the file. Please check permissions and try again.", variant: "destructive"});
     } finally {
         setIsUploading(false);
     }
   };
+
+    const handleDeleteDocument = async (document: DocumentData) => {
+        if (!shipmentId || !document.path) return;
+        setDeletingDocId(document.id);
+        try {
+            // Delete from Storage
+            const fileRef = ref(storage, document.path);
+            await deleteObject(fileRef);
+
+            // Delete from Firestore
+            const docRef = doc(db, "shipments", shipmentId, "documents", document.id);
+            await deleteDoc(docRef);
+
+            toast({ title: "Success", description: "Document deleted." });
+        } catch (error) {
+            console.error("Error deleting document:", error);
+            toast({ title: "Error", description: "Failed to delete document.", variant: "destructive" });
+        } finally {
+            setDeletingDocId(null);
+        }
+    };
+
 
   const handleBackNavigation = () => {
     router.push(`/dashboard/shipment/${shipmentId}`);
@@ -247,164 +285,145 @@ export default function ShipmentDocumentsPage() {
   }
   
   const canEditExporterInfo = user && (user.uid === shipment.exporterId || userType === 'employee');
-  const canEditVendorInfo = user && (user.uid === shipment.winningCarrierId || userType === 'employee');
+  const canEditCarrierInfo = user && (user.uid === shipment.winningCarrierId || userType === 'employee');
+  const canUpload = user && (user.uid === shipment.exporterId || user.uid === shipment.winningCarrierId || userType === 'employee');
+  const canDelete = (doc: DocumentData) => user && (user.uid === doc.uploadedBy || userType === 'employee');
 
   return (
     <div className="container py-6 md:py-10">
         <div className="flex justify-between items-center mb-6">
-             <Button variant="ghost" onClick={handleBackNavigation}>
+            <Button variant="ghost" onClick={handleBackNavigation} className="text-muted-foreground hover:text-foreground">
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Back to Shipment
             </Button>
         </div>
         
         <div className="mb-8">
-            <Card className="border-none shadow-none">
-                <CardHeader className="px-0">
-                    <CardTitle className="flex items-center gap-3 text-2xl font-headline">
-                       <FileText className="h-6 w-6 text-primary"/> Document Center
-                    </CardTitle>
-                    <CardDescription>Contact information and documents for shipment: {shipment.productName}</CardDescription>
-                </CardHeader>
-            </Card>
+            <h1 className="text-3xl font-bold font-headline">Document Center</h1>
+            <p className="text-muted-foreground">Documents and contact information for: {shipment.productName}</p>
         </div>
         
-        <div className="grid md:grid-cols-2 gap-8 items-start">
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-3"><Anchor className="text-primary"/>Exporter Info</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4 text-sm">
-                    <div className="flex items-center gap-3 font-semibold">
-                        <Building2 className="h-5 w-5 text-muted-foreground" />
-                        <span>{shipment?.exporterName || "Exporter Company Name"}</span>
+        <Card className="mb-8">
+            <CardContent className="p-6 grid md:grid-cols-2 gap-6 md:gap-0">
+                <div className="space-y-4 md:pr-6">
+                    <h3 className="font-semibold text-lg flex items-center gap-2"><Anchor className="text-primary h-5 w-5"/> Exporter</h3>
+                    <p className="font-medium text-sm text-muted-foreground">{shipment?.exporterName}</p>
+                    <div className="space-y-2">
+                        <Label htmlFor="exporter-poc-name">POC Name</Label>
+                        <Input 
+                            id="exporter-poc-name" 
+                            value={exporterFullName} 
+                            onChange={(e) => setExporterFullName(e.target.value)} 
+                            placeholder="Enter full name"
+                            disabled={!canEditExporterInfo || isSavingExporter}
+                        />
                     </div>
-                    <Separator />
-                    <div className="space-y-4">
-                        <div className="space-y-2">
-                           <Label htmlFor="poc-name" className="flex items-center gap-2"><UserIcon className="h-4 w-4 text-muted-foreground"/> POC Full Name</Label>
-                           <Input 
-                                id="poc-name" 
-                                value={exporterPocFullName} 
-                                onChange={(e) => setExporterPocFullName(e.target.value)} 
-                                placeholder="Enter full name"
-                                disabled={!canEditExporterInfo || isSavingExporter}
-                           />
-                        </div>
-                         <div className="space-y-2">
-                           <Label htmlFor="poc-phone" className="flex items-center gap-2"><Phone className="h-4 w-4 text-muted-foreground"/> POC Number</Label>
-                           <Input 
-                                id="poc-phone" 
-                                value={exporterPocPhoneNumber} 
-                                onChange={(e) => setExporterPocPhoneNumber(e.target.value)} 
-                                placeholder="Enter phone number"
-                                disabled={!canEditExporterInfo || isSavingExporter}
-                           />
-                        </div>
-                        {canEditExporterInfo && (
-                            <div className="flex justify-end">
-                                <Button size="sm" onClick={() => handlePocUpdate('exporter')} disabled={isSavingExporter}>
-                                    <Save className="mr-2 h-4 w-4"/>
-                                    {isSavingExporter ? "Saving..." : "Save"}
-                                </Button>
-                            </div>
-                        )}
+                    <div className="space-y-2">
+                        <Label htmlFor="exporter-poc-phone">Phone</Label>
+                        <Input 
+                            id="exporter-poc-phone" 
+                            value={exporterPhoneNumber} 
+                            onChange={(e) => setExporterPhoneNumber(e.target.value)} 
+                            placeholder="Enter phone number"
+                            disabled={!canEditExporterInfo || isSavingExporter}
+                        />
                     </div>
-                </CardContent>
-            </Card>
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-3"><Truck className="text-primary"/>Vendor Info</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4 text-sm">
-                    <div className="flex items-center gap-3 font-semibold">
-                        <Building2 className="h-5 w-5 text-muted-foreground" />
-                        <span>{shipment?.winningCarrierName || "Vendor Company Name"}</span>
-                    </div>
-                    <Separator />
-                    <div className="space-y-4">
-                         <div className="space-y-2">
-                           <Label htmlFor="vendor-poc-name" className="flex items-center gap-2"><UserIcon className="h-4 w-4 text-muted-foreground"/> POC Full Name</Label>
-                           <Input 
-                                id="vendor-poc-name" 
-                                value={vendorPocFullName} 
-                                onChange={(e) => setVendorPocFullName(e.target.value)} 
-                                placeholder="Enter full name"
-                                disabled={!canEditVendorInfo || isSavingVendor}
-                           />
+                    {canEditExporterInfo && (
+                        <div className="flex justify-end">
+                            <Button size="sm" onClick={() => handlePocUpdate('exporter')} disabled={isSavingExporter}>
+                                {isSavingExporter && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                Save
+                            </Button>
                         </div>
-                         <div className="space-y-2">
-                           <Label htmlFor="vendor-poc-phone" className="flex items-center gap-2"><Phone className="h-4 w-4 text-muted-foreground"/> POC Number</Label>
-                           <Input 
-                                id="vendor-poc-phone" 
-                                value={vendorPocPhoneNumber} 
-                                onChange={(e) => setVendorPocPhoneNumber(e.target.value)} 
-                                placeholder="Enter phone number"
-                                disabled={!canEditVendorInfo || isSavingVendor}
-                           />
-                        </div>
-                        {canEditVendorInfo && (
-                            <div className="flex justify-end">
-                                <Button size="sm" onClick={() => handlePocUpdate('vendor')} disabled={isSavingVendor}>
-                                    <Save className="mr-2 h-4 w-4"/>
-                                    {isSavingVendor ? "Saving..." : "Save"}
-                                </Button>
-                            </div>
-                        )}
-                    </div>
-                </CardContent>
-            </Card>
-        </div>
+                    )}
+                </div>
 
-        <Separator className="my-8" />
+                <div className="relative md:pl-6">
+                    <Separator orientation="vertical" className="absolute left-0 top-0 h-full hidden md:block" />
+                    <div className="space-y-4">
+                        <h3 className="font-semibold text-lg flex items-center gap-2"><Truck className="text-primary h-5 w-5"/> Carrier</h3>
+                         <p className="font-medium text-sm text-muted-foreground">{shipment?.winningCarrierName}</p>
+                         <div className="space-y-2">
+                            <Label htmlFor="vendor-poc-name">POC Name</Label>
+                            <Input 
+                                id="vendor-poc-name" 
+                                value={carrierFullName} 
+                                onChange={(e) => setCarrierFullName(e.target.value)} 
+                                placeholder="Enter full name"
+                                disabled={!canEditCarrierInfo || isSavingCarrier}
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="vendor-poc-phone">Phone</Label>
+                            <Input 
+                                id="vendor-poc-phone" 
+                                value={carrierPhoneNumber} 
+                                onChange={(e) => setCarrierPhoneNumber(e.target.value)} 
+                                placeholder="Enter phone number"
+                                disabled={!canEditCarrierInfo || isSavingCarrier}
+                            />
+                        </div>
+                        {canEditCarrierInfo && (
+                            <div className="flex justify-end">
+                                <Button size="sm" onClick={() => handlePocUpdate('carrier')} disabled={isSavingCarrier}>
+                                    {isSavingCarrier && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    Save
+                                </Button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </CardContent>
+        </Card>
         
         <Card>
             <CardHeader className="flex flex-row items-center justify-between">
-                <div>
+                <div className="space-y-1">
                     <CardTitle>Shipment Documents</CardTitle>
-                    <CardDescription>Manage all documents related to this shipment.</CardDescription>
                 </div>
-                <Dialog open={isUploadDialogOpen} onOpenChange={setIsUploadDialogOpen}>
-                    <DialogTrigger asChild>
-                        <Button>
-                            <PlusCircle className="mr-2 h-4 w-4" />
-                            Upload Document
-                        </Button>
-                    </DialogTrigger>
-                    <DialogContent className="sm:max-w-md">
-                        <DialogHeader>
-                            <DialogTitle>Upload New Document</DialogTitle>
-                            <DialogDescription>
-                                Select a file from your local machine and give it a name.
-                            </DialogDescription>
-                        </DialogHeader>
-                        <div className="grid gap-4 py-4">
-                            <div className="grid gap-2">
-                                <Label htmlFor="doc-name">Name of the Document</Label>
-                                <Input id="doc-name" placeholder="e.g., Bill of Lading" value={documentName} onChange={e => setDocumentName(e.target.value)} />
-                            </div>
-                            <div className="grid gap-2">
-                                <Label htmlFor="doc-file">Upload Document</Label>
-                                <Input id="doc-file" type="file" onChange={e => setFileToUpload(e.target.files ? e.target.files[0] : null)} />
-                            </div>
-                        </div>
-                        <DialogFooter>
-                            <Button variant="outline" onClick={() => setIsUploadDialogOpen(false)} disabled={isUploading}>Cancel</Button>
-                            <Button onClick={handleUploadDocument} disabled={isUploading}>
-                                {isUploading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                {isUploading ? 'Uploading...' : 'Upload'}
+                {canUpload && (
+                    <Dialog open={isUploadDialogOpen} onOpenChange={setIsUploadDialogOpen}>
+                        <DialogTrigger asChild>
+                            <Button>
+                                <Upload className="mr-2 h-4 w-4" />
+                                Upload
                             </Button>
-                        </DialogFooter>
-                    </DialogContent>
-                </Dialog>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-md">
+                            <DialogHeader>
+                                <DialogTitle>Upload New Document</DialogTitle>
+                                <DialogDescription>
+                                    Select a file and provide an optional name.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <div className="grid gap-4 py-4">
+                                <div className="grid gap-2">
+                                    <Label htmlFor="doc-name">Document Name (optional)</Label>
+                                    <Input id="doc-name" placeholder="Defaults to file name" value={documentName} onChange={e => setDocumentName(e.target.value)} />
+                                </div>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="doc-file">File</Label>
+                                    <Input id="doc-file" type="file" onChange={e => setFileToUpload(e.target.files ? e.target.files[0] : null)} />
+                                </div>
+                            </div>
+                            <DialogFooter>
+                                <Button variant="outline" onClick={() => setIsUploadDialogOpen(false)} disabled={isUploading}>Cancel</Button>
+                                <Button onClick={handleUploadDocument} disabled={isUploading || !fileToUpload}>
+                                    {isUploading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    {isUploading ? 'Uploading...' : 'Upload'}
+                                </Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
+                )}
             </CardHeader>
             <CardContent>
                 <div className="border rounded-lg">
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead>Document Name</TableHead>
-                                <TableHead className="hidden md:table-cell">Uploaded By</TableHead>
+                                <TableHead>Document</TableHead>
+                                <TableHead className="hidden sm:table-cell">Uploaded By</TableHead>
                                 <TableHead className="hidden md:table-cell">Date</TableHead>
                                 <TableHead className="text-right">Actions</TableHead>
                             </TableRow>
@@ -413,10 +432,24 @@ export default function ShipmentDocumentsPage() {
                             {documents.length > 0 ? (
                                 documents.map(doc => (
                                     <TableRow key={doc.id}>
-                                        <TableCell className="font-medium">{doc.name}</TableCell>
-                                        <TableCell className="hidden md:table-cell">{doc.uploaderName}</TableCell>
-                                        <TableCell className="hidden md:table-cell">{doc.uploadedAt ? format(doc.uploadedAt.toDate(), 'PPp') : 'N/A'}</TableCell>
+                                        <TableCell className="font-medium">
+                                            {doc.name}
+                                        </TableCell>
+                                        <TableCell className="hidden sm:table-cell">
+                                            <div className="flex flex-col">
+                                                <span>{doc.uploaderName}</span>
+                                                {doc.uploaderType && <Badge variant="secondary" className="capitalize w-fit">{doc.uploaderType}</Badge>}
+                                            </div>
+                                        </TableCell>
+                                        <TableCell className="hidden md:table-cell">
+                                            {doc.uploadedAt ? format(doc.uploadedAt.toDate(), "dd MMM, yyyy") : 'N/A'}
+                                        </TableCell>
                                         <TableCell className="text-right">
+                                             {canDelete(doc) && (
+                                                <Button variant="ghost" size="icon" onClick={() => handleDeleteDocument(doc)} disabled={deletingDocId === doc.id}>
+                                                    {deletingDocId === doc.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                                                </Button>
+                                            )}
                                             <Button variant="ghost" size="icon" asChild>
                                                 <a href={doc.url} target="_blank" rel="noopener noreferrer">
                                                     <Download className="h-4 w-4" />
@@ -428,7 +461,7 @@ export default function ShipmentDocumentsPage() {
                             ) : (
                                 <TableRow>
                                     <TableCell colSpan={4} className="h-24 text-center">
-                                        No documents have been uploaded yet.
+                                        No documents uploaded yet. Click "Upload" to add your first file.
                                     </TableCell>
                                 </TableRow>
                             )}
@@ -440,7 +473,3 @@ export default function ShipmentDocumentsPage() {
     </div>
   );
 }
-
-    
-
-    
