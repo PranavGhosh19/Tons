@@ -2,25 +2,17 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { collection, doc, setDoc, updateDoc, getDoc } from "firebase/firestore";
-import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
-import type { User } from "firebase/auth";
-import { db, storage, auth } from "@/lib/firebase";
-
+import { useRouter } from 'next/navigation';
+import { onAuthStateChanged, User } from 'firebase/auth';
+import { doc, getDoc, collection, query, where, onSnapshot, DocumentData, updateDoc } from 'firebase/firestore';
+import { auth, db } from '@/lib/firebase';
+import { Skeleton } from "@/components/ui/skeleton";
+import { ShieldCheck, Check, X, Eye, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,328 +22,290 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
-import { Separator } from "./ui/separator";
-import { FirestorePermissionError } from "@/firebase/errors";
-import { errorEmitter } from "@/firebase/error-emitter";
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import Link from "next/link";
+import { Separator } from "@/components/ui/separator";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
-const FileInput = ({ id, onFileChange, disabled, file }: { id: string, onFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void, disabled: boolean, file: File | null }) => (
-    <div className="grid gap-2">
-        <Label htmlFor={id} className="sr-only">Upload file</Label>
-        <Input 
-            id={id} 
-            type="file" 
-            onChange={onFileChange} 
-            disabled={disabled} 
-            accept=".pdf,.jpg,.jpeg,.png"
-            className="text-muted-foreground file:text-primary file:font-semibold"
-        />
-        {file && <p className="text-sm text-muted-foreground">Selected: {file.name}</p>}
-    </div>
-);
+export default function VerificationPage() {
+  const [user, setUser] = useState<User | null>(null);
+  const [pendingUsers, setPendingUsers] = useState<DocumentData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedUser, setSelectedUser] = useState<DocumentData | null>(null);
+  
+  const router = useRouter();
+  const { toast } = useToast();
 
-
-export function ExporterVerificationForm({ user }: { user: User }) {
-    const router = useRouter();
-    const { toast } = useToast();
-    const [userType, setUserType] = useState<"exporter" | "carrier" | null>(null);
-
-    // Text input state
-    const [companyName, setCompanyName] = useState("");
-    const [gst, setGst] = useState("");
-    const [pan, setPan] = useState("");
-    const [tan, setTan] = useState("");
-    const [iecCode, setIecCode] = useState("");
-    const [adCode, setAdCode] = useState("");
-    const [licenseNumber, setLicenseNumber] = useState("");
-    const [companyType, setCompanyType] = useState("");
-    
-    // File input state
-    const [gstFile, setGstFile] = useState<File | null>(null);
-    const [panFile, setPanFile] = useState<File | null>(null);
-    const [tanFile, setTanFile] = useState<File | null>(null);
-    const [iecCodeFile, setIecCodeFile] = useState<File | null>(null);
-    const [adCodeFile, setAdCodeFile] = useState<File | null>(null);
-    const [licenseFile, setLicenseFile] = useState<File | null>(null);
-    const [incorporationCertificate, setIncorporationCertificate] = useState<File | null>(null);
-
-    // UI state
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [isConfirmOpen, setIsConfirmOpen] = useState(false);
-
-    useEffect(() => {
-        const fetchUserType = async () => {
-            if (user) {
-                const userDocRef = doc(db, 'users', user.uid);
-                const userDoc = await getDoc(userDocRef);
-                if (userDoc.exists()) {
-                    setUserType(userDoc.data().userType);
-                }
-            }
-        };
-        fetchUserType();
-    }, [user]);
-
-    const isExporter = userType === 'exporter';
-    const isCarrier = userType === 'carrier';
-
-    const handleFileChange = (setter: React.Dispatch<React.SetStateAction<File | null>>) => (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files.length > 0) {
-            setter(e.target.files[0]);
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      if (currentUser) {
+        const userDocRef = doc(db, 'users', currentUser.uid);
+        const userDoc = await getDoc(userDocRef);
+        if (userDoc.exists() && userDoc.data()?.userType === 'employee') {
+            setUser(currentUser);
+        } else {
+            router.push('/dashboard');
         }
-    };
+      } else {
+        router.push('/login');
+      }
+    });
+    return () => unsubscribe();
+  }, [router]);
 
-    const uploadFile = async (file: File, docType: string): Promise<{ url: string, path: string }> => {
-        if (!user) throw new Error("User not authenticated for file upload.");
-        const filePath = `verification-documents/${userType}/${user.uid}/${docType}-${file.name}-${Date.now()}`;
-        const fileRef = ref(storage, filePath);
-        const uploadResult = await uploadBytes(fileRef, file);
-        const downloadUrl = await getDownloadURL(uploadResult.ref);
-        return { url: downloadUrl, path: filePath };
-    };
+  useEffect(() => {
+    if (!user) return;
 
-    const handleSubmit = async () => {
-        setIsConfirmOpen(false);
-        if (!user) {
-             toast({ title: "Error", description: "You must be logged in to submit.", variant: "destructive" });
-             return;
-        }
+    setLoading(true);
+    const q = query(collection(db, "users"), where("verificationStatus", "==", "pending"));
 
-        if (isExporter && (!companyName || !gst || !pan || !iecCode || !adCode || !incorporationCertificate)) {
-             toast({ title: "Missing Fields", description: "Please fill out all required text fields and upload the incorporation certificate.", variant: "destructive" });
-             return;
-        }
-        if (isCarrier && (!companyName || !gst || !pan || !licenseNumber || !companyType || !incorporationCertificate)) {
-             toast({ title: "Missing Fields", description: "Please fill out all required fields and upload the incorporation certificate for carriers.", variant: "destructive" });
-             return;
-        }
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const users: DocumentData[] = [];
+      querySnapshot.forEach((doc) => {
+        users.push({ id: doc.id, ...doc.data() });
+      });
+      setPendingUsers(users);
+      setLoading(false);
+    }, (error) => {
+        console.error("Error fetching pending users: ", error);
+        toast({ title: "Error", description: "Failed to load pending verifications.", variant: "destructive" });
+        setLoading(false);
+    });
 
-        setIsSubmitting(true);
+    return () => unsubscribe();
 
-        try {
-            const companyDetails: any = {
-                legalName: companyName,
-                pan,
-                gstin: gst,
-                verificationStatus: 'pending', // Add status directly to subcollection doc
-            };
+  }, [user, toast]);
 
-            if (gstFile) {
-              const gstUpload = await uploadFile(gstFile, 'gst');
-              companyDetails.gstFileUrl = gstUpload.url;
-              companyDetails.gstFilePath = gstUpload.path;
-            }
-            if (panFile) {
-              const panUpload = await uploadFile(panFile, 'pan');
-              companyDetails.panFileUrl = panUpload.url;
-              companyDetails.panFilePath = panUpload.path;
-            }
-            if (incorporationCertificate) {
-              const incUpload = await uploadFile(incorporationCertificate, 'incorporation-certificate');
-              companyDetails.incorporationCertificateUrl = incUpload.url;
-              companyDetails.incorporationCertificatePath = incUpload.path;
-            }
+  const handleVerification = async (userId: string, status: 'approved' | 'rejected') => {
+      try {
+          const userDocRef = doc(db, "users", userId);
+          await updateDoc(userDocRef, { verificationStatus: status });
+          toast({
+              title: "Success",
+              description: `User has been ${status}.`
+          });
+          setSelectedUser(null);
+      } catch (error) {
+          console.error(`Error updating user status:`, error);
+           toast({
+              title: "Error",
+              description: `Failed to update user status.`,
+              variant: "destructive"
+          });
+      }
+  }
 
-            if (isExporter) {
-                companyDetails.tan = tan;
-                companyDetails.iecCode = iecCode;
-                companyDetails.adCode = adCode;
-
-                if (tanFile) {
-                    const tanUpload = await uploadFile(tanFile, 'tan');
-                    companyDetails.tanFileUrl = tanUpload.url;
-                    companyDetails.tanFilePath = tanUpload.path;
-                }
-                if (iecCodeFile) {
-                    const iecUpload = await uploadFile(iecCodeFile, 'iec');
-                    companyDetails.iecCodeFileUrl = iecUpload.url;
-                    companyDetails.iecCodeFilePath = iecUpload.path;
-                }
-                if (adCodeFile) {
-                    const adUpload = await uploadFile(adCodeFile, 'ad');
-                    companyDetails.adCodeFileUrl = adUpload.url;
-                    companyDetails.adCodeFilePath = adUpload.path;
-                }
-            }
-
-            if (isCarrier) {
-                companyDetails.licenseNumber = licenseNumber;
-                companyDetails.companyType = companyType;
-                if (licenseFile) {
-                  const licenseUpload = await uploadFile(licenseFile, 'license');
-                  companyDetails.licenseFileUrl = licenseUpload.url;
-                  companyDetails.licenseFilePath = licenseUpload.path;
-                }
-            }
-            
-            // Create a new document in the companyDetails subcollection
-            const companyDetailsRef = doc(collection(db, "users", user.uid, "companyDetails"));
-            
-            setDoc(companyDetailsRef, companyDetails).catch(async (serverError) => {
-                const permissionError = new FirestorePermissionError({
-                    path: companyDetailsRef.path,
-                    operation: 'create',
-                    requestResourceData: companyDetails,
-                });
-                errorEmitter.emit('permission-error', permissionError);
-                 // We throw the original error so it's still logged if not caught by the overlay
-                throw serverError;
-            });
-
-            // No longer need to update the main user document with the status
-            
-            toast({ title: "Verification Submitted", description: "Your business details have been submitted for review." });
-            router.push("/dashboard");
-
-        } catch (error) {
-            console.error("Error submitting verification: ", error);
-            // This will catch errors from file upload or the final user doc update
-            // but not from the setDoc with the error emitter.
-            if (!(error instanceof FirestorePermissionError)) {
-                 toast({ title: "Submission Failed", description: "An unexpected error occurred. Please try again.", variant: "destructive" });
-            }
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
+  const handleOpenPreview = (url: string | undefined) => {
+    if (url) {
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } else {
+      toast({
+        title: "No Document",
+        description: "There is no document available to preview for this item.",
+        variant: "destructive"
+      });
+    }
+  }
 
 
+  if (loading) {
     return (
-        <>
-            <div className="flex flex-col items-center justify-center min-h-screen bg-white p-4">
-                <Card className="mx-auto w-full max-w-2xl shadow-xl">
-                    <CardHeader className="text-center space-y-2">
-                        <CardTitle className="text-3xl font-bold font-headline capitalize">
-                            {userType} Business Verification
-                        </CardTitle>
-                        <CardDescription className="text-base">
-                            Please provide your company's details for verification.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-6">
-                        <div className="space-y-4">
-                            <h3 className="text-lg font-medium">Company Details</h3>
-                            <div className="grid gap-2">
-                                <Label htmlFor="company-name">Name of the Company</Label>
-                                <Input id="company-name" value={companyName} onChange={e => setCompanyName(e.target.value)} disabled={isSubmitting} />
-                            </div>
-                        </div>
-
-                        <Separator />
-
-                        <div className="space-y-4">
-                            <h3 className="text-lg font-medium">Tax Information</h3>
-                            <div className="grid sm:grid-cols-2 gap-4 items-end">
-                                 <div className="grid gap-2">
-                                    <Label htmlFor="gst">GST Number</Label>
-                                    <Input id="gst" value={gst} onChange={e => setGst(e.target.value)} disabled={isSubmitting} />
-                                </div>
-                                 <FileInput id="gst-file" onFileChange={handleFileChange(setGstFile)} disabled={isSubmitting} file={gstFile} />
-                            </div>
-
-                             <div className="grid sm:grid-cols-2 gap-4 items-end">
-                                <div className="grid gap-2">
-                                    <Label htmlFor="pan">PAN</Label>
-                                    <Input id="pan" value={pan} onChange={e => setPan(e.target.value)} disabled={isSubmitting} />
-                                </div>
-                                <FileInput id="pan-file" onFileChange={handleFileChange(setPanFile)} disabled={isSubmitting} file={panFile} />
-                            </div>
-                            
-                            {isExporter && (
-                                <div className="grid sm:grid-cols-2 gap-4 items-end">
-                                    <div className="grid gap-2">
-                                        <Label htmlFor="tan">TAN (If registered)</Label>
-                                        <Input id="tan" value={tan} onChange={e => setTan(e.target.value)} disabled={isSubmitting} />
-                                    </div>
-                                    <FileInput id="tan-file" onFileChange={handleFileChange(setTanFile)} disabled={isSubmitting} file={tanFile} />
-                                </div>
-                            )}
-                        </div>
-
-                        {isExporter && (
-                            <>
-                                <Separator />
-                                <div className="space-y-4">
-                                     <h3 className="text-lg font-medium">Import/Export Codes</h3>
-                                     <div className="grid sm:grid-cols-2 gap-4 items-end">
-                                        <div className="grid gap-2">
-                                            <Label htmlFor="iec">IEC Code</Label>
-                                            <Input id="iec" value={iecCode} onChange={e => setIecCode(e.target.value)} disabled={isSubmitting} />
-                                        </div>
-                                         <FileInput id="iec-file" onFileChange={handleFileChange(setIecCodeFile)} disabled={isSubmitting} file={iecCodeFile} />
-                                    </div>
-                                    <div className="grid sm:grid-cols-2 gap-4 items-end">
-                                        <div className="grid gap-2">
-                                            <Label htmlFor="ad">AD Code</Label>
-                                            <Input id="ad" value={adCode} onChange={e => setAdCode(e.target.value)} disabled={isSubmitting} />
-                                        </div>
-                                        <FileInput id="ad-file" onFileChange={handleFileChange(setAdCodeFile)} disabled={isSubmitting} file={adCodeFile} />
-                                    </div>
-                                </div>
-                            </>
-                        )}
-                        
-                        {isCarrier && (
-                            <>
-                                <Separator />
-                                <div className="space-y-4">
-                                    <h3 className="text-lg font-medium">Carrier Details</h3>
-                                    <div className="grid sm:grid-cols-2 gap-4 items-end">
-                                        <div className="grid gap-2">
-                                            <Label htmlFor="license-number">License Number</Label>
-                                            <Input id="license-number" value={licenseNumber} onChange={e => setLicenseNumber(e.target.value)} disabled={isSubmitting} />
-                                        </div>
-                                        <FileInput id="license-file" onFileChange={handleFileChange(setLicenseFile)} disabled={isSubmitting} file={licenseFile} />
-                                    </div>
-                                     <div className="grid sm:grid-cols-2 gap-4">
-                                         <div className="grid gap-2">
-                                            <Label htmlFor="company-type">Company Type</Label>
-                                            <Select value={companyType} onValueChange={setCompanyType} disabled={isSubmitting}>
-                                                <SelectTrigger id="company-type">
-                                                    <SelectValue placeholder="Select type" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="individual">Individual</SelectItem>
-                                                    <SelectItem value="company">Company</SelectItem>
-                                                    <SelectItem value="overseas">Overseas</SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-                                    </div>
-                                </div>
-                            </>
-                        )}
-
-                        <Separator />
-                        <div className="space-y-4">
-                            <h3 className="text-lg font-medium">Incorporation Certificate</h3>
-                            <FileInput id="incorporation-cert" onFileChange={handleFileChange(setIncorporationCertificate)} disabled={isSubmitting} file={incorporationCertificate} />
-                        </div>
-                    </CardContent>
-                    <CardFooter>
-                        <Button onClick={() => setIsConfirmOpen(true)} disabled={isSubmitting} className="w-full h-12 text-lg">
-                            {isSubmitting ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Submitting...</> : 'Submit for Verification'}
-                        </Button>
-                    </CardFooter>
-                </Card>
-            </div>
-            <AlertDialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Confirm Submission</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            Are you sure you want to submit these details for verification? You will not be able to edit them after submission until the review is complete.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel disabled={isSubmitting}>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleSubmit} disabled={isSubmitting}>
-                            {isSubmitting ? "Submitting..." : "Confirm & Submit"}
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
-        </>
+        <div className="container py-6 md:py-10">
+            <Skeleton className="h-8 w-48 mb-8" />
+            <Skeleton className="h-64 w-full" />
+        </div>
     );
+  }
+  
+  const InfoRow = ({ label, value, onPreviewClick, hasDocument }: { label: string, value?: string | null, onPreviewClick?: () => void, hasDocument?: boolean }) => (
+    <div className="flex items-center justify-between border-b py-3">
+      <div>
+        <dt className="text-muted-foreground">{label}</dt>
+        <dd className="font-semibold text-left">{value || 'N/A'}</dd>
+      </div>
+      {hasDocument && onPreviewClick && (
+          <Button variant="ghost" size="sm" onClick={onPreviewClick}>
+              <Eye className="mr-2 h-4 w-4" /> Preview
+          </Button>
+      )}
+    </div>
+  )
+
+  return (
+    <>
+    <div className="container py-6 md:py-10">
+        <div className="flex justify-between items-center mb-8">
+            <h1 className="text-2xl sm:text-3xl font-bold font-headline">Verification Center</h1>
+        </div>
+
+        {pendingUsers.length > 0 ? (
+            <Card>
+                <CardHeader>
+                    <CardTitle>Pending Verifications</CardTitle>
+                    <CardDescription>Review and approve or deny new exporter applications.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <div className="border rounded-lg overflow-x-auto">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Company Name</TableHead>
+                                    <TableHead>User Email</TableHead>
+                                    <TableHead>Type</TableHead>
+                                    <TableHead className="text-right">Actions</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {pendingUsers.map((pUser) => (
+                                    <TableRow key={pUser.id}>
+                                        <TableCell className="font-medium">{pUser.companyDetails?.legalName || pUser.name}</TableCell>
+                                        <TableCell>{pUser.email}</TableCell>
+                                        <TableCell>
+                                            <Badge variant={pUser.userType === 'exporter' ? 'default' : 'secondary'} className="capitalize">{pUser.userType}</Badge>
+                                        </TableCell>
+                                        <TableCell className="text-right">
+                                            <Dialog>
+                                                <DialogTrigger asChild>
+                                                    <Button variant="outline" size="sm" onClick={() => setSelectedUser(pUser)}>
+                                                        <Eye className="mr-2 h-4 w-4" /> View Details
+                                                    </Button>
+                                                </DialogTrigger>
+                                                <DialogContent className="sm:max-w-xl">
+                                                    <DialogHeader>
+                                                        <DialogTitle>Verification Details</DialogTitle>
+                                                        <DialogDescription>
+                                                            Review the information submitted by {selectedUser?.name}.
+                                                        </DialogDescription>
+                                                    </DialogHeader>
+                                                    <ScrollArea className="max-h-[60vh] pr-6 -mr-6">
+                                                        {selectedUser?.companyDetails ? (
+                                                            <div className="py-4 space-y-4">
+                                                                <dl className="space-y-1">
+                                                                    <InfoRow label="Legal Name" value={selectedUser.companyDetails.legalName} />
+                                                                    <InfoRow 
+                                                                        label="GST" 
+                                                                        value={selectedUser.gstin} 
+                                                                        hasDocument={!!selectedUser.companyDetails.gstFileUrl}
+                                                                        onPreviewClick={() => handleOpenPreview(selectedUser.companyDetails.gstFileUrl)}
+                                                                    />
+                                                                    <InfoRow 
+                                                                        label="PAN" 
+                                                                        value={selectedUser.companyDetails.pan}
+                                                                        hasDocument={!!selectedUser.companyDetails.panFileUrl}
+                                                                        onPreviewClick={() => handleOpenPreview(selectedUser.companyDetails.panFileUrl)}
+                                                                    />
+                                                                    {selectedUser.userType === 'exporter' ? (
+                                                                        <>
+                                                                            <InfoRow 
+                                                                                label="TAN" 
+                                                                                value={selectedUser.companyDetails.tan}
+                                                                                hasDocument={!!selectedUser.companyDetails.tanFileUrl}
+                                                                                onPreviewClick={() => handleOpenPreview(selectedUser.companyDetails.tanFileUrl)}
+                                                                            />
+                                                                            <InfoRow 
+                                                                                label="IEC Code" 
+                                                                                value={selectedUser.companyDetails.iecCode}
+                                                                                hasDocument={!!selectedUser.companyDetails.iecCodeFileUrl}
+                                                                                onPreviewClick={() => handleOpenPreview(selectedUser.companyDetails.iecCodeFileUrl)}
+                                                                            />
+                                                                            <InfoRow 
+                                                                                label="AD Code" 
+                                                                                value={selectedUser.companyDetails.adCode}
+                                                                                hasDocument={!!selectedUser.companyDetails.adCodeFileUrl}
+                                                                                onPreviewClick={() => handleOpenPreview(selectedUser.companyDetails.adCodeFileUrl)}
+                                                                            />
+                                                                        </>
+                                                                    ) : (
+                                                                        <>
+                                                                            <InfoRow 
+                                                                                label="License Number" 
+                                                                                value={selectedUser.companyDetails.licenseNumber}
+                                                                                hasDocument={!!selectedUser.companyDetails.licenseFileUrl}
+                                                                                onPreviewClick={() => handleOpenPreview(selectedUser.companyDetails.licenseFileUrl)}
+                                                                            />
+                                                                            <InfoRow label="Company Type" value={selectedUser.companyDetails.companyType} />
+                                                                        </>
+                                                                    )}
+                                                                </dl>
+                                                                <Separator />
+                                                                <InfoRow 
+                                                                    label="Incorporation Certificate" 
+                                                                    hasDocument={!!selectedUser.companyDetails.incorporationCertificateUrl}
+                                                                    onPreviewClick={() => handleOpenPreview(selectedUser.companyDetails.incorporationCertificateUrl)}
+                                                                />
+                                                            </div>
+                                                        ) : <p className="py-4 text-muted-foreground">No company details submitted.</p>}
+                                                    </ScrollArea>
+                                                    <DialogFooter>
+                                                        <AlertDialog>
+                                                            <AlertDialogTrigger asChild>
+                                                                <Button variant="destructive">
+                                                                    <X className="mr-2 h-4 w-4" /> Deny
+                                                                </Button>
+                                                            </AlertDialogTrigger>
+                                                            <AlertDialogContent>
+                                                                <AlertDialogHeader>
+                                                                    <AlertDialogTitle>Are you sure you want to deny this user?</AlertDialogTitle>
+                                                                    <AlertDialogDescription>
+                                                                        This action will mark the user's verification as 'rejected'. They will be notified but will not be able to use platform features until approved.
+                                                                    </AlertDialogDescription>
+                                                                </AlertDialogHeader>
+                                                                <AlertDialogFooter>
+                                                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                                    <AlertDialogAction onClick={() => handleVerification(pUser.id, 'rejected')} className="bg-destructive hover:bg-destructive/90">Confirm Denial</AlertDialogAction>
+                                                                </AlertDialogFooter>
+                                                            </AlertDialogContent>
+                                                        </AlertDialog>
+                                                        <AlertDialog>
+                                                            <AlertDialogTrigger asChild>
+                                                                <Button className="bg-green-600 hover:bg-green-700">
+                                                                    <Check className="mr-2 h-4 w-4" /> Approve
+                                                                </Button>
+                                                            </AlertDialogTrigger>
+                                                            <AlertDialogContent>
+                                                                <AlertDialogHeader>
+                                                                    <AlertDialogTitle>Are you sure you want to approve this user?</AlertDialogTitle>
+                                                                    <AlertDialogDescription>
+                                                                        Approving this user will grant them full access to the platform based on their role. This action can be reversed later if needed.
+                                                                    </AlertDialogDescription>
+                                                                </AlertDialogHeader>
+                                                                <AlertDialogFooter>
+                                                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                                    <AlertDialogAction onClick={() => handleVerification(pUser.id, 'approved')}>Confirm Approval</AlertDialogAction>
+                                                                </AlertDialogFooter>
+                                                            </AlertDialogContent>
+                                                        </AlertDialog>
+                                                    </DialogFooter>
+                                                </DialogContent>
+                                            </Dialog>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </div>
+                </CardContent>
+            </Card>
+        ) : (
+             <div className="border rounded-lg p-12 text-center bg-card dark:bg-card">
+                <div className="flex justify-center mb-4">
+                    <ShieldCheck className="h-12 w-12 text-muted-foreground" />
+                </div>
+                <h2 className="text-xl font-semibold mb-2">No Pending Verifications</h2>
+                <p className="text-muted-foreground">There are currently no new users awaiting verification.</p>
+            </div>
+        )}
+    </div>
+    </>
+  );
 }
