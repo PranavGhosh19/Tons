@@ -1,9 +1,9 @@
 
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { doc, updateDoc } from "firebase/firestore";
+import { doc, updateDoc, setDoc, collection, getDoc } from "firebase/firestore";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import type { User } from "firebase/auth";
 import { db, storage } from "@/lib/firebase";
@@ -33,11 +33,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Separator } from "./ui/separator";
-
-interface VerificationFormProps {
-    user: User;
-    userType: string | null;
-}
+import { errorEmitter } from "@/firebase/error-emitter";
+import { FirestorePermissionError, type SecurityRuleContext } from "@/firebase/errors";
 
 const FileInput = ({ id, onFileChange, disabled, file }: { id: string, onFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void, disabled: boolean, file: File | null }) => (
     <div className="grid gap-2">
@@ -55,9 +52,10 @@ const FileInput = ({ id, onFileChange, disabled, file }: { id: string, onFileCha
 );
 
 
-export function ExporterVerificationForm({ user, userType }: VerificationFormProps) {
+export function ExporterVerificationForm({ user }: { user: User }) {
     const router = useRouter();
     const { toast } = useToast();
+    const [userType, setUserType] = useState<string | null>(null);
 
     // Text input state
     const [companyName, setCompanyName] = useState("");
@@ -81,6 +79,18 @@ export function ExporterVerificationForm({ user, userType }: VerificationFormPro
     // UI state
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+
+    useEffect(() => {
+        const fetchUserType = async () => {
+            if (user) {
+                const userDoc = await getDoc(doc(db, 'users', user.uid));
+                if (userDoc.exists()) {
+                    setUserType(userDoc.data().userType);
+                }
+            }
+        };
+        fetchUserType();
+    }, [user]);
 
     const isExporter = userType === 'exporter';
     const isCarrier = userType === 'carrier';
@@ -113,68 +123,80 @@ export function ExporterVerificationForm({ user, userType }: VerificationFormPro
         setIsSubmitting(true);
 
         try {
-            const companyDetails: any = {
+            const companyDetailsPayload: any = {
                 legalName: companyName,
+                gstin: gst,
                 pan,
             };
 
             if (gstFile) {
               const gstUpload = await uploadFile(gstFile, 'gst');
-              companyDetails.gstFileUrl = gstUpload.url;
-              companyDetails.gstFilePath = gstUpload.path;
+              companyDetailsPayload.gstFileUrl = gstUpload.url;
+              companyDetailsPayload.gstFilePath = gstUpload.path;
             }
             if (panFile) {
               const panUpload = await uploadFile(panFile, 'pan');
-              companyDetails.panFileUrl = panUpload.url;
-              companyDetails.panFilePath = panUpload.path;
+              companyDetailsPayload.panFileUrl = panUpload.url;
+              companyDetailsPayload.panFilePath = panUpload.path;
             }
             if (incorporationCertificate) {
               const incUpload = await uploadFile(incorporationCertificate, 'incorporation-certificate');
-              companyDetails.incorporationCertificateUrl = incUpload.url;
-              companyDetails.incorporationCertificatePath = incUpload.path;
+              companyDetailsPayload.incorporationCertificateUrl = incUpload.url;
+              companyDetailsPayload.incorporationCertificatePath = incUpload.path;
             }
 
             // Exporter specific fields and uploads
             if (isExporter) {
-                companyDetails.tan = tan;
-                companyDetails.iecCode = iecCode;
-                companyDetails.adCode = adCode;
+                companyDetailsPayload.tan = tan;
+                companyDetailsPayload.iecCode = iecCode;
+                companyDetailsPayload.adCode = adCode;
 
                 if (tanFile) {
                     const tanUpload = await uploadFile(tanFile, 'tan');
-                    companyDetails.tanFileUrl = tanUpload.url;
-                    companyDetails.tanFilePath = tanUpload.path;
+                    companyDetailsPayload.tanFileUrl = tanUpload.url;
+                    companyDetailsPayload.tanFilePath = tanUpload.path;
                 }
                 if (iecCodeFile) {
                     const iecUpload = await uploadFile(iecCodeFile, 'iec');
-                    companyDetails.iecCodeFileUrl = iecUpload.url;
-                    companyDetails.iecCodeFilePath = iecUpload.path;
+                    companyDetailsPayload.iecCodeFileUrl = iecUpload.url;
+                    companyDetailsPayload.iecCodeFilePath = iecUpload.path;
                 }
                 if (adCodeFile) {
                     const adUpload = await uploadFile(adCodeFile, 'ad');
-                    companyDetails.adCodeFileUrl = adUpload.url;
-                    companyDetails.adCodeFilePath = adUpload.path;
+                    companyDetailsPayload.adCodeFileUrl = adUpload.url;
+                    companyDetailsPayload.adCodeFilePath = adUpload.path;
                 }
             }
 
             // Carrier specific fields
             if (isCarrier) {
-                companyDetails.licenseNumber = licenseNumber;
-                companyDetails.companyType = companyType;
+                companyDetailsPayload.licenseNumber = licenseNumber;
+                companyDetailsPayload.companyType = companyType;
                 if (licenseFile) {
                   const licenseUpload = await uploadFile(licenseFile, 'license');
-                  companyDetails.licenseFileUrl = licenseUpload.url;
-                  companyDetails.licenseFilePath = licenseUpload.path;
+                  companyDetailsPayload.licenseFileUrl = licenseUpload.url;
+                  companyDetailsPayload.licenseFilePath = licenseUpload.path;
                 }
             }
             
-            // Save all data to Firestore
+            // 1. Save company details to the subcollection
+            // We use the user's UID as the document ID to ensure there's only one.
+            const companyDetailsDocRef = doc(db, "users", user.uid, "companyDetails", user.uid);
+            await setDoc(companyDetailsDocRef, companyDetailsPayload);
+
+            // 2. Update the verification status on the main user document
             const userDocRef = doc(db, "users", user.uid);
-            await updateDoc(userDocRef, {
-                companyDetails,
-                gstin: gst, 
-                verificationStatus: 'pending',
+            const userUpdatePayload = { verificationStatus: 'pending' };
+            
+            updateDoc(userDocRef, userUpdatePayload).catch(async (serverError) => {
+                const permissionError = new FirestorePermissionError({
+                    path: userDocRef.path,
+                    operation: 'update',
+                    requestResourceData: userUpdatePayload,
+                } satisfies SecurityRuleContext);
+                errorEmitter.emit('permission-error', permissionError);
             });
+
 
             toast({ title: "Verification Submitted", description: "Your business details have been submitted for review." });
             router.push("/dashboard");
