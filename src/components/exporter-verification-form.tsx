@@ -1,12 +1,12 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { doc, updateDoc } from "firebase/firestore";
+import { collection, doc, setDoc, updateDoc, getDoc } from "firebase/firestore";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import type { User } from "firebase/auth";
-import { db, storage } from "@/lib/firebase";
+import { db, storage, auth } from "@/lib/firebase";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -33,11 +33,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Separator } from "./ui/separator";
-
-interface VerificationFormProps {
-    user: User;
-    userType: string | null;
-}
+import { FirestorePermissionError } from "@/firebase/errors";
+import { errorEmitter } from "@/firebase/error-emitter";
 
 const FileInput = ({ id, onFileChange, disabled, file }: { id: string, onFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void, disabled: boolean, file: File | null }) => (
     <div className="grid gap-2">
@@ -55,9 +52,10 @@ const FileInput = ({ id, onFileChange, disabled, file }: { id: string, onFileCha
 );
 
 
-export function ExporterVerificationForm({ user, userType }: VerificationFormProps) {
+export function ExporterVerificationForm({ user }: { user: User }) {
     const router = useRouter();
     const { toast } = useToast();
+    const [userType, setUserType] = useState<"exporter" | "carrier" | null>(null);
 
     // Text input state
     const [companyName, setCompanyName] = useState("");
@@ -82,6 +80,19 @@ export function ExporterVerificationForm({ user, userType }: VerificationFormPro
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
+    useEffect(() => {
+        const fetchUserType = async () => {
+            if (user) {
+                const userDocRef = doc(db, 'users', user.uid);
+                const userDoc = await getDoc(userDocRef);
+                if (userDoc.exists()) {
+                    setUserType(userDoc.data().userType);
+                }
+            }
+        };
+        fetchUserType();
+    }, [user]);
+
     const isExporter = userType === 'exporter';
     const isCarrier = userType === 'carrier';
 
@@ -92,6 +103,7 @@ export function ExporterVerificationForm({ user, userType }: VerificationFormPro
     };
 
     const uploadFile = async (file: File, docType: string): Promise<{ url: string, path: string }> => {
+        if (!user) throw new Error("User not authenticated for file upload.");
         const filePath = `verification-documents/${userType}/${user.uid}/${docType}-${file.name}-${Date.now()}`;
         const fileRef = ref(storage, filePath);
         const uploadResult = await uploadBytes(fileRef, file);
@@ -101,6 +113,11 @@ export function ExporterVerificationForm({ user, userType }: VerificationFormPro
 
     const handleSubmit = async () => {
         setIsConfirmOpen(false);
+        if (!user) {
+             toast({ title: "Error", description: "You must be logged in to submit.", variant: "destructive" });
+             return;
+        }
+
         if (isExporter && (!companyName || !gst || !pan || !iecCode || !adCode || !incorporationCertificate)) {
              toast({ title: "Missing Fields", description: "Please fill out all required text fields and upload the incorporation certificate.", variant: "destructive" });
              return;
@@ -116,6 +133,8 @@ export function ExporterVerificationForm({ user, userType }: VerificationFormPro
             const companyDetails: any = {
                 legalName: companyName,
                 pan,
+                gstin: gst,
+                verificationStatus: 'pending', // Add status directly to subcollection doc
             };
 
             if (gstFile) {
@@ -134,7 +153,6 @@ export function ExporterVerificationForm({ user, userType }: VerificationFormPro
               companyDetails.incorporationCertificatePath = incUpload.path;
             }
 
-            // Exporter specific fields and uploads
             if (isExporter) {
                 companyDetails.tan = tan;
                 companyDetails.iecCode = iecCode;
@@ -157,7 +175,6 @@ export function ExporterVerificationForm({ user, userType }: VerificationFormPro
                 }
             }
 
-            // Carrier specific fields
             if (isCarrier) {
                 companyDetails.licenseNumber = licenseNumber;
                 companyDetails.companyType = companyType;
@@ -168,20 +185,32 @@ export function ExporterVerificationForm({ user, userType }: VerificationFormPro
                 }
             }
             
-            // Save all data to Firestore
-            const userDocRef = doc(db, "users", user.uid);
-            await updateDoc(userDocRef, {
-                companyDetails,
-                gstin: gst, 
-                verificationStatus: 'pending',
+            // Create a new document in the companyDetails subcollection
+            const companyDetailsRef = doc(collection(db, "users", user.uid, "companyDetails"));
+            
+            setDoc(companyDetailsRef, companyDetails).catch(async (serverError) => {
+                const permissionError = new FirestorePermissionError({
+                    path: companyDetailsRef.path,
+                    operation: 'create',
+                    requestResourceData: companyDetails,
+                });
+                errorEmitter.emit('permission-error', permissionError);
+                 // We throw the original error so it's still logged if not caught by the overlay
+                throw serverError;
             });
 
+            // No longer need to update the main user document with the status
+            
             toast({ title: "Verification Submitted", description: "Your business details have been submitted for review." });
             router.push("/dashboard");
 
         } catch (error) {
             console.error("Error submitting verification: ", error);
-            toast({ title: "Submission Failed", description: "An unexpected error occurred. Please try again.", variant: "destructive" });
+            // This will catch errors from file upload or the final user doc update
+            // but not from the setDoc with the error emitter.
+            if (!(error instanceof FirestorePermissionError)) {
+                 toast({ title: "Submission Failed", description: "An unexpected error occurred. Please try again.", variant: "destructive" });
+            }
         } finally {
             setIsSubmitting(false);
         }
