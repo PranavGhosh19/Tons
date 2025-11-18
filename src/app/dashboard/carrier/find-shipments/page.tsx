@@ -241,10 +241,10 @@ export default function FindShipmentsPage() {
             <div className="flex justify-between items-center mb-8">
                 <h1 className="text-2xl sm:text-3xl font-bold font-headline">Find Shipments</h1>
             </div>
-             <Card className="bg-yellow-50 border-yellow-400">
+             <Card className="bg-yellow-50 dark:bg-card border-yellow-400 dark:border-yellow-600">
                 <CardHeader>
                     <CardTitle className="flex items-center gap-3"><ShieldAlert className="text-yellow-600"/>Verification Required</CardTitle>
-                    <CardDescription>
+                    <CardDescription className="dark:text-yellow-500">
                         Your account must be verified and approved by our team before you can view and bid on shipments. Please check your dashboard for your verification status.
                     </CardDescription>
                 </CardHeader>
