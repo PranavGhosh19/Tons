@@ -426,10 +426,10 @@ function ExporterDashboardPage() {
     const status = userData?.verificationStatus;
     if (status === 'pending') {
         return (
-            <Card className="bg-yellow-50 border-yellow-400">
+            <Card className="bg-yellow-50 dark:bg-card border-yellow-400 dark:border-yellow-600">
                 <CardHeader>
                     <CardTitle className="flex items-center gap-3"><ShieldAlert className="text-yellow-600"/>Verification Pending</CardTitle>
-                    <CardDescription>
+                    <CardDescription className="dark:text-yellow-500">
                         Your business details are currently under review. You will be notified once the verification is complete. You can create and save draft shipments, but you cannot schedule them to go live yet.
                     </CardDescription>
                 </CardHeader>
@@ -438,10 +438,10 @@ function ExporterDashboardPage() {
     }
     if (status === 'rejected') {
          return (
-            <Card className="bg-red-50 border-red-400">
+            <Card className="bg-red-50 dark:bg-card border-red-400 dark:border-red-600">
                 <CardHeader>
                     <CardTitle className="flex items-center gap-3"><ShieldAlert className="text-red-600"/>Verification Denied</CardTitle>
-                    <CardDescription>
+                    <CardDescription className="dark:text-red-500">
                        Your verification request was not approved. Please review your details in Settings and contact support if you believe this is an error.
                     </CardDescription>
                 </CardHeader>
