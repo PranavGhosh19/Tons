@@ -25,7 +25,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Separator } from "@/components/ui/separator";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 import {
@@ -37,10 +36,8 @@ import {
   Palette,
   Landmark,
   FileText,
-  Building2, // ✅ FIXED MISSING IMPORT
+  Building2, // FIXED
 } from "lucide-react";
-
-import { cn } from "@/lib/utils";
 
 type SettingsView =
   | "profile"
@@ -101,6 +98,9 @@ const SidebarNav = ({
 export default function SettingsPage() {
   const [user, setUser] = useState<User | null>(null);
   const [userData, setUserData] = useState<DocumentData | null>(null);
+  const [companyDetails, setCompanyDetails] = useState<DocumentData | null>(
+    null
+  );
   const [loading, setLoading] = useState(true);
   const [activeView, setActiveView] = useState<SettingsView>("profile");
 
@@ -112,35 +112,55 @@ export default function SettingsPage() {
   const [name, setName] = useState("");
   const [isSavingName, setIsSavingName] = useState(false);
 
+  // Password States
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmNewPassword, setConfirmNewPassword] = useState("");
   const [isChangingPassword, setIsChangingPassword] = useState(false);
 
+  // Load User Data
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      if (currentUser) {
-        setUser(currentUser);
-        const userDocRef = doc(db, "users", currentUser.uid);
-        const userDoc = await getDoc(userDocRef);
-
-        if (userDoc.exists()) {
-          const data = userDoc.data();
-          setUserData(data);
-          setName(data.name || "");
-        }
-
-        setLoading(false);
-      } else {
+      if (!currentUser) {
         router.push("/login");
+        return;
       }
+
+      setUser(currentUser);
+
+      const userRef = doc(db, "users", currentUser.uid);
+      const userSnap = await getDoc(userRef);
+
+      if (userSnap.exists()) {
+        const data = userSnap.data();
+        setUserData(data);
+        setName(data.name || "");
+
+        if (data.verificationStatus === "approved") {
+          const companyRef = doc(
+            db,
+            "users",
+            currentUser.uid,
+            "companyDetails",
+            currentUser.uid
+          );
+          const companySnap = await getDoc(companyRef);
+
+          if (companySnap.exists()) {
+            setCompanyDetails(companySnap.data());
+          }
+        }
+      }
+
+      setLoading(false);
     });
 
     return () => unsubscribe();
   }, [router]);
 
+  // Update Name
   const handleNameUpdate = async () => {
-    if (!user || !name) {
+    if (!user || !name.trim()) {
       toast({
         title: "Error",
         description: "Name cannot be empty.",
@@ -152,32 +172,32 @@ export default function SettingsPage() {
     setIsSavingName(true);
 
     try {
-      const userDocRef = doc(db, "users", user.uid);
-      await updateDoc(userDocRef, { name });
+      await updateDoc(doc(db, "users", user.uid), { name });
 
       toast({
         title: "Success",
         description: "Your name has been updated.",
       });
     } catch (error) {
-      console.error("Error updating name:", error);
+      console.error(error);
       toast({
         title: "Error",
-        description: "Failed to update your name.",
+        description: "Failed to update name.",
         variant: "destructive",
       });
-    } finally {
-      setIsSavingName(false);
     }
+
+    setIsSavingName(false);
   };
 
+  // Change Password
   const handleChangePassword = async () => {
-    if (!user) return;
+    if (!user || !user.email) return;
 
     if (!currentPassword || !newPassword || !confirmNewPassword) {
       toast({
         title: "Error",
-        description: "Please fill all password fields.",
+        description: "Please fill all fields.",
         variant: "destructive",
       });
       return;
@@ -186,7 +206,7 @@ export default function SettingsPage() {
     if (newPassword !== confirmNewPassword) {
       toast({
         title: "Error",
-        description: "New passwords do not match.",
+        description: "Passwords do not match.",
         variant: "destructive",
       });
       return;
@@ -195,7 +215,7 @@ export default function SettingsPage() {
     if (newPassword.length < 6) {
       toast({
         title: "Error",
-        description: "Password should be at least 6 characters.",
+        description: "Password must be at least 6 characters.",
         variant: "destructive",
       });
       return;
@@ -204,68 +224,55 @@ export default function SettingsPage() {
     setIsChangingPassword(true);
 
     try {
-      if (user.email) {
-        const credential = EmailAuthProvider.credential(
-          user.email,
-          currentPassword
-        );
+      const credential = EmailAuthProvider.credential(
+        user.email,
+        currentPassword
+      );
 
-        await reauthenticateWithCredential(user, credential);
-        await updatePassword(user, newPassword);
-
-        toast({
-          title: "Success",
-          description: "Your password has been changed successfully.",
-        });
-
-        setCurrentPassword("");
-        setNewPassword("");
-        setConfirmNewPassword("");
-      }
-    } catch (error: any) {
-      console.error("Error changing password:", error);
-
-      let description = "An error occurred while changing your password.";
-      if (error.code === "auth/wrong-password") {
-        description = "The current password you entered is incorrect.";
-      }
+      await reauthenticateWithCredential(user, credential);
+      await updatePassword(user, newPassword);
 
       toast({
-        title: "Password Change Failed",
-        description,
+        title: "Success",
+        description: "Password updated successfully.",
+      });
+
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmNewPassword("");
+    } catch (error: any) {
+      let message = "Failed to change password.";
+      if (error.code === "auth/wrong-password")
+        message = "Incorrect current password.";
+
+      toast({
+        title: "Error",
+        description: message,
         variant: "destructive",
       });
-    } finally {
-      setIsChangingPassword(false);
     }
+
+    setIsChangingPassword(false);
   };
 
-  if (loading) {
-    return <PageSkeleton />;
-  }
+  if (loading) return <PageSkeleton />;
 
   return (
     <div className="container max-w-5xl py-6 md:py-10">
-      <div className="mb-8">
-        <h1 className="text-2xl sm:text-3xl font-bold font-headline">
-          Settings
-        </h1>
-        <p className="text-muted-foreground">
-          Manage your account and preferences.
-        </p>
-      </div>
+      <h1 className="text-3xl font-bold mb-2">Settings</h1>
+      <p className="text-muted-foreground mb-8">
+        Manage your account and preferences.
+      </p>
 
       <div className="grid md:grid-cols-4 gap-8">
-        {/* Sidebar */}
         <div className="md:col-span-1">
           <SidebarNav activeView={activeView} setView={setActiveView} />
         </div>
 
-        {/* Content */}
         <div className="md:col-span-3">
-          {/* ---------------- Profile ---------------- */}
+          {/* PROFILE */}
           {activeView === "profile" && (
-            <Card className="bg-white dark:bg-card">
+            <Card>
               <CardHeader>
                 <CardTitle>Profile Information</CardTitle>
                 <CardDescription>Manage your personal details.</CardDescription>
@@ -273,9 +280,8 @@ export default function SettingsPage() {
 
               <CardContent className="space-y-6">
                 <div className="grid sm:grid-cols-3 items-center gap-4">
-                  <Label htmlFor="name">Display Name</Label>
+                  <Label>Name</Label>
                   <Input
-                    id="name"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     className="sm:col-span-2"
@@ -283,9 +289,8 @@ export default function SettingsPage() {
                 </div>
 
                 <div className="grid sm:grid-cols-3 items-center gap-4">
-                  <Label htmlFor="email">Email Address</Label>
+                  <Label>Email</Label>
                   <Input
-                    id="email"
                     value={user?.email || ""}
                     disabled
                     className="sm:col-span-2 bg-secondary"
@@ -301,116 +306,73 @@ export default function SettingsPage() {
             </Card>
           )}
 
-          {/* ---------------- Business ---------------- */}
+          {/* BUSINESS INFO */}
           {activeView === "business" && (
-            <Card className="bg-white dark:bg-card">
+            <Card>
               <CardHeader>
                 <CardTitle>Business Information</CardTitle>
-                <CardDescription>Your verified company details.</CardDescription>
+                <CardDescription>Verified company details.</CardDescription>
               </CardHeader>
 
               <CardContent>
-                {userData?.verificationStatus === "approved" &&
-                userData?.companyDetails ? (
-                  <div className="space-y-4">
-                    <div className="grid sm:grid-cols-3 items-start gap-4">
-                      <Label>Legal Name</Label>
-                      <p className="sm:col-span-2 text-sm text-muted-foreground">
-                        {userData.companyDetails.legalName}
-                      </p>
-                    </div>
-
-                    {userData.companyDetails.address && (
-                      <div className="grid sm:grid-cols-3 items-start gap-4">
-                        <Label>Address</Label>
-                        <p className="sm:col-span-2 text-sm text-muted-foreground">
-                          {userData.companyDetails.address}
-                        </p>
-                      </div>
-                    )}
-
-                    <div className="grid sm:grid-cols-3 items-start gap-4">
-                      <Label>GSTIN</Label>
-                      <p className="sm:col-span-2 text-sm text-muted-foreground">
-                        {userData.gstin}
-                      </p>
-                    </div>
-
-                    {userData.userType === "exporter" && (
-                      <>
-                        <div className="grid sm:grid-cols-3 items-start gap-4">
-                          <Label>PAN</Label>
-                          <p className="sm:col-span-2 text-sm text-muted-foreground">
-                            {userData.companyDetails.pan}
-                          </p>
-                        </div>
-
-                        <div className="grid sm:grid-cols-3 items-start gap-4">
-                          <Label>TAN</Label>
-                          <p className="sm:col-span-2 text-sm text-muted-foreground">
-                            {userData.companyDetails.tan || "N/A"}
-                          </p>
-                        </div>
-
-                        <div className="grid sm:grid-cols-3 items-start gap-4">
-                          <Label>IEC Code</Label>
-                          <p className="sm:col-span-2 text-sm text-muted-foreground">
-                            {userData.companyDetails.iecCode}
-                          </p>
-                        </div>
-
-                        <div className="grid sm:grid-cols-3 items-start gap-4">
-                          <Label>AD Code</Label>
-                          <p className="sm:col-span-2 text-sm text-muted-foreground">
-                            {userData.companyDetails.adCode}
-                          </p>
-                        </div>
-                      </>
-                    )}
-
-                    {userData.userType === "carrier" && (
-                      <div className="grid sm:grid-cols-3 items-start gap-4">
-                        <Label>License No.</Label>
-                        <p className="sm:col-span-2 text-sm text-muted-foreground">
-                          {userData.companyDetails.licenseNumber}
-                        </p>
-                      </div>
+                {!userData?.verificationStatus ||
+                userData.verificationStatus !== "approved" ? (
+                  <div className="flex flex-col items-center justify-center h-48 border-2 border-dashed rounded-lg">
+                    <Building2 className="h-10 w-10 mb-3 text-muted-foreground" />
+                    <p className="text-muted-foreground">
+                      Your business is not verified yet.
+                    </p>
+                    {userData?.verificationStatus === "unsubmitted" && (
+                      <Button
+                        variant="link"
+                        onClick={() => router.push("/gst-verification")}
+                      >
+                        Complete Verification
+                      </Button>
                     )}
                   </div>
                 ) : (
-                  <div className="flex flex-col items-center justify-center h-48 border-2 border-dashed rounded-lg">
-                    <Building2 className="h-10 w-10 text-muted-foreground mb-4" />
-                    <p className="text-muted-foreground">
-                      Your business information is not yet verified.
+                  <div className="space-y-4">
+                    <p>
+                      <strong>Legal Name:</strong> {companyDetails?.legalName}
                     </p>
-
-                    <Button
-                      variant="link"
-                      onClick={() => router.push("/gst-verification")}
-                    >
-                      Complete Verification
-                    </Button>
+                    <p>
+                      <strong>GSTIN:</strong>{" "}
+                      {userData?.gstin || companyDetails?.gstin}
+                    </p>
+                    {userData?.userType === "exporter" && (
+                      <>
+                        <p>
+                          <strong>PAN:</strong> {companyDetails?.pan}
+                        </p>
+                        <p>
+                          <strong>IEC Code:</strong> {companyDetails?.iecCode}
+                        </p>
+                        <p>
+                          <strong>AD Code:</strong> {companyDetails?.adCode}
+                        </p>
+                      </>
+                    )}
                   </div>
                 )}
               </CardContent>
             </Card>
           )}
 
-          {/* ---------------- Password ---------------- */}
+          {/* PASSWORD */}
           {activeView === "password" && (
-            <Card className="bg-white dark:bg-card">
+            <Card>
               <CardHeader>
                 <CardTitle>Change Password</CardTitle>
                 <CardDescription>
-                  Update your password to keep your account secure.
+                  Update your password regularly for security.
                 </CardDescription>
               </CardHeader>
 
               <CardContent className="space-y-6">
                 <div className="grid sm:grid-cols-3 items-center gap-4">
-                  <Label htmlFor="current-password">Current Password</Label>
+                  <Label>Current Password</Label>
                   <Input
-                    id="current-password"
                     type="password"
                     value={currentPassword}
                     onChange={(e) => setCurrentPassword(e.target.value)}
@@ -419,9 +381,8 @@ export default function SettingsPage() {
                 </div>
 
                 <div className="grid sm:grid-cols-3 items-center gap-4">
-                  <Label htmlFor="new-password">New Password</Label>
+                  <Label>New Password</Label>
                   <Input
-                    id="new-password"
                     type="password"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
@@ -430,11 +391,8 @@ export default function SettingsPage() {
                 </div>
 
                 <div className="grid sm:grid-cols-3 items-center gap-4">
-                  <Label htmlFor="confirm-new-password">
-                    Confirm New Password
-                  </Label>
+                  <Label>Confirm Password</Label>
                   <Input
-                    id="confirm-new-password"
                     type="password"
                     value={confirmNewPassword}
                     onChange={(e) => setConfirmNewPassword(e.target.value)}
@@ -454,115 +412,83 @@ export default function SettingsPage() {
             </Card>
           )}
 
-          {/* ---------------- Preferences ---------------- */}
+          {/* PREFERENCES */}
           {activeView === "preferences" && (
-            <Card className="bg-white dark:bg-card">
+            <Card>
               <CardHeader>
                 <CardTitle>User Preferences</CardTitle>
                 <CardDescription>
-                  Customize your experience on the platform.
+                  Choose your preferred theme.
                 </CardDescription>
               </CardHeader>
 
-              <CardContent className="space-y-6">
-                <div className="space-y-2">
-                  <Label>Theme</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Select the theme for the dashboard.
-                  </p>
-                </div>
-
+              <CardContent>
                 <RadioGroup
                   value={theme}
                   onValueChange={setTheme}
                   className="grid grid-cols-3 gap-4"
                 >
-                  <div>
-                    <RadioGroupItem
-                      value="light"
-                      id="light"
-                      className="peer sr-only"
-                    />
-                    <Label
-                      htmlFor="light"
-                      className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary"
-                    >
-                      <Sun className="h-6 w-6" />
-                      Light
-                    </Label>
-                  </div>
+                  <label htmlFor="light">
+                    <RadioGroupItem value="light" id="light" />
+                    <div className="flex flex-col items-center mt-2">
+                      <Sun />
+                      <p>Light</p>
+                    </div>
+                  </label>
 
-                  <div>
-                    <RadioGroupItem
-                      value="dark"
-                      id="dark"
-                      className="peer sr-only"
-                    />
-                    <Label
-                      htmlFor="dark"
-                      className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary"
-                    >
-                      <Moon className="h-6 w-6" />
-                      Dark
-                    </Label>
-                  </div>
+                  <label htmlFor="dark">
+                    <RadioGroupItem value="dark" id="dark" />
+                    <div className="flex flex-col items-center mt-2">
+                      <Moon />
+                      <p>Dark</p>
+                    </div>
+                  </label>
 
-                  <div>
-                    <RadioGroupItem
-                      value="system"
-                      id="system"
-                      className="peer sr-only"
-                    />
-                    <Label
-                      htmlFor="system"
-                      className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary"
-                    >
-                      <Monitor className="h-6 w-6" />
-                      System
-                    </Label>
-                  </div>
+                  <label htmlFor="system">
+                    <RadioGroupItem value="system" id="system" />
+                    <div className="flex flex-col items-center mt-2">
+                      <Monitor />
+                      <p>System</p>
+                    </div>
+                  </label>
                 </RadioGroup>
               </CardContent>
             </Card>
           )}
 
-          {/* ---------------- Bank ---------------- */}
+          {/* BANK */}
           {activeView === "bank" && (
-            <Card className="bg-white dark:bg-card">
+            <Card>
               <CardHeader>
                 <CardTitle>Bank Account Details</CardTitle>
                 <CardDescription>
-                  Manage your bank account for transactions.
+                  Manage your bank information.
                 </CardDescription>
               </CardHeader>
 
               <CardContent>
-                <div className="flex flex-col items-center justify-center h-48 border-2 border-dashed rounded-lg">
-                  <Landmark className="h-10 w-10 text-muted-foreground mb-4" />
-                  <p className="text-muted-foreground">
-                    Bank account management is coming soon.
-                  </p>
+                <div className="flex flex-col items-center justify-center h-48 border-2 border-dashed rounded-md">
+                  <Landmark className="h-10 w-10 mb-3" />
+                  <p className="text-muted-foreground">Coming soon.</p>
                 </div>
               </CardContent>
             </Card>
           )}
 
-          {/* ---------------- Regulatory ---------------- */}
+          {/* REGULATORY */}
           {activeView === "regulatory" && (
-            <Card className="bg-white dark:bg-card">
+            <Card>
               <CardHeader>
                 <CardTitle>Regulatory Details</CardTitle>
                 <CardDescription>
-                  Manage your regulatory documents and compliance information.
+                  Manage your compliance documents.
                 </CardDescription>
               </CardHeader>
 
               <CardContent>
-                <div className="flex flex-col items-center justify-center h-48 border-2 border-dashed rounded-lg">
-                  <FileText className="h-10 w-10 text-muted-foreground mb-4" />
-                  <p className="text-muted-foreground">
-                    Regulatory details management is coming soon.
-                  </p>
+                <div className="flex flex-col items-center justify-center h-48 border-2 border-dashed rounded-md">
+                  <FileText className="h-10 w-10 mb-3" />
+                  <p className="text-muted-foreground">Coming soon.</p>
                 </div>
               </CardContent>
             </Card>
