@@ -46,7 +46,7 @@ type SettingsView =
   | "bank"
   | "regulatory";
 
-// ------------------ Skeleton Loader ------------------
+// -------------- Skeleton ----------------
 const PageSkeleton = () => (
   <div className="container max-w-5xl py-6 md:py-10">
     <Skeleton className="h-8 w-48 mb-8" />
@@ -62,7 +62,7 @@ const PageSkeleton = () => (
   </div>
 );
 
-// ------------------ Sidebar ------------------
+// -------------- Sidebar ----------------
 const SidebarNav = ({
   activeView,
   setView,
@@ -96,7 +96,7 @@ const SidebarNav = ({
   );
 };
 
-// ------------------ Main Page ------------------
+// -------------- MAIN PAGE ----------------
 export default function SettingsPage() {
   const [user, setUser] = useState<User | null>(null);
   const [userData, setUserData] = useState<DocumentData | null>(null);
@@ -108,7 +108,7 @@ export default function SettingsPage() {
   const { toast } = useToast();
   const { theme, setTheme } = useTheme();
 
-  // Form States
+  // Form states
   const [name, setName] = useState("");
   const [isSavingName, setIsSavingName] = useState(false);
 
@@ -117,96 +117,85 @@ export default function SettingsPage() {
   const [confirmNewPassword, setConfirmNewPassword] = useState("");
   const [isChangingPassword, setIsChangingPassword] = useState(false);
 
-  // ------------------ Fetch User + User Data ------------------
+  // ---------------- FETCH USER + COMPANY DETAILS ----------------
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      if (currentUser) {
-        setUser(currentUser);
+      if (!currentUser) {
+        router.push("/login");
+        return;
+      }
 
-        const userDocRef = doc(db, "users", currentUser.uid);
-        const userDoc = await getDoc(userDocRef);
+      setUser(currentUser);
 
-        if (userDoc.exists()) {
-          const data = userDoc.data();
-          setUserData(data);
-          setName(data.name || "");
+      const userRef = doc(db, "users", currentUser.uid);
+      const userSnap = await getDoc(userRef);
 
-          // ------------------ UPDATED COMPANY DETAILS FETCH ------------------
-          if (data.verificationStatus === "approved") {
-            const companyRef = doc(
-              db,
-              "users",
-              currentUser.uid,
-              "companyDetails",
-              currentUser.uid
-            );
-            const companySnap = await getDoc(companyRef);
+      if (userSnap.exists()) {
+        const data = userSnap.data();
+        setUserData(data);
+        setName(data.name || "");
 
-            if (companySnap.exists()) {
-              const company = companySnap.data();
+        // ------------ Fetch company details if verified -----------
+        if (data.verificationStatus === "approved") {
+          const companyRef = doc(
+            db,
+            "users",
+            currentUser.uid,
+            "companyDetails",
+            currentUser.uid
+          );
 
-              // Ensure all fields always exist
-              setCompanyDetails({
-                legalName: company.legalName || "",
-                gstin: company.gstin || "",
-                pan: company.pan || "",
-                address: company.address || "",
+          const companySnap = await getDoc(companyRef);
 
-                // Exporter-only
-                tan: company.tan || "",
-                iecCode: company.iecCode || "",
-                adCode: company.adCode || "",
+          if (companySnap.exists()) {
+            const company = companySnap.data();
 
-                // Carrier-only
-                licenseNumber: company.licenseNumber || "",
-              });
-            }
+            setCompanyDetails({
+              legalName: company.legalName || "",
+              gstin: company.gstin || "",
+              pan: company.pan || "",            // ⭐ PAN Included ⭐
+              address: company.address || "",
+
+              // Exporter
+              tan: company.tan || "",
+              iecCode: company.iecCode || "",
+              adCode: company.adCode || "",
+
+              // Carrier
+              licenseNumber: company.licenseNumber || "",
+            });
           }
         }
-
-        setLoading(false);
-      } else {
-        router.push("/login");
       }
+
+      setLoading(false);
     });
 
     return () => unsubscribe();
   }, [router]);
 
-  // ------------------ Update Name ------------------
+  // ---------------- UPDATE NAME ----------------
   const handleNameUpdate = async () => {
-    if (!user || !name.trim()) {
-      toast({
-        title: "Error",
-        description: "Name cannot be empty.",
-        variant: "destructive",
-      });
-      return;
-    }
+    if (!user || !name.trim()) return;
 
     setIsSavingName(true);
     try {
       await updateDoc(doc(db, "users", user.uid), { name });
       toast({ title: "Success", description: "Name updated." });
-    } catch (err) {
-      toast({
-        title: "Error",
-        description: "Failed to update name.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSavingName(false);
+    } catch {
+      toast({ title: "Error", description: "Update failed", variant: "destructive" });
     }
+    setIsSavingName(false);
   };
 
-  // ------------------ Change Password ------------------
+  // ---------------- CHANGE PASSWORD ----------------
   const handleChangePassword = async () => {
     if (!user) return;
 
     if (!currentPassword || !newPassword || !confirmNewPassword) {
       toast({
         title: "Error",
-        description: "Please fill all fields.",
+        description: "All fields required",
         variant: "destructive",
       });
       return;
@@ -215,16 +204,7 @@ export default function SettingsPage() {
     if (newPassword !== confirmNewPassword) {
       toast({
         title: "Error",
-        description: "Passwords do not match.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (newPassword.length < 6) {
-      toast({
-        title: "Error",
-        description: "Password must be at least 6 characters.",
+        description: "Passwords don't match",
         variant: "destructive",
       });
       return;
@@ -234,95 +214,73 @@ export default function SettingsPage() {
 
     try {
       if (user.email) {
-        const credential = EmailAuthProvider.credential(
-          user.email,
-          currentPassword
+        await reauthenticateWithCredential(
+          user,
+          EmailAuthProvider.credential(user.email, currentPassword)
         );
-        await reauthenticateWithCredential(user, credential);
+
         await updatePassword(user, newPassword);
 
-        toast({
-          title: "Success",
-          description: "Password updated successfully.",
-        });
-
-        setCurrentPassword("");
-        setNewPassword("");
-        setConfirmNewPassword("");
+        toast({ title: "Success", description: "Password changed" });
       }
-    } catch (err: any) {
+    } catch {
       toast({
-        title: "Password Change Failed",
-        description:
-          err.code === "auth/wrong-password"
-            ? "Incorrect current password."
-            : "Something went wrong.",
+        title: "Failed",
+        description: "Incorrect password",
         variant: "destructive",
       });
-    } finally {
-      setIsChangingPassword(false);
     }
+
+    setIsChangingPassword(false);
   };
 
-  // ------------------ Render ------------------
+  // ---------------- RENDER ----------------
   if (loading) return <PageSkeleton />;
 
   return (
     <div className="container max-w-5xl py-6 md:py-10">
-      <div className="mb-8">
-        <h1 className="text-2xl sm:text-3xl font-bold font-headline">
-          Settings
-        </h1>
-        <p className="text-muted-foreground">
-          Manage your account and preferences.
-        </p>
-      </div>
+      <h1 className="text-2xl sm:text-3xl font-bold mb-2">Settings</h1>
+      <p className="text-muted-foreground mb-8">
+        Manage your account and preferences.
+      </p>
 
       <div className="grid md:grid-cols-4 gap-8">
-        {/* Sidebar */}
         <div className="md:col-span-1">
           <SidebarNav activeView={activeView} setView={setActiveView} />
         </div>
 
-        {/* Content */}
         <div className="md:col-span-3">
-          {/* ----------- PROFILE ----------- */}
+          {/* ---------------- PROFILE ---------------- */}
           {activeView === "profile" && (
             <Card>
               <CardHeader>
                 <CardTitle>Profile Information</CardTitle>
-                <CardDescription>Manage your personal details.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="grid sm:grid-cols-3 items-center gap-4">
-                  <Label htmlFor="name">Display Name</Label>
+                <div className="grid grid-cols-3 gap-4">
+                  <Label>Name</Label>
                   <Input
-                    id="name"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    className="sm:col-span-2"
+                    className="col-span-2"
                   />
                 </div>
 
-                <div className="grid sm:grid-cols-3 items-center gap-4">
+                <div className="grid grid-cols-3 gap-4">
                   <Label>Email</Label>
-                  <Input
-                    value={user?.email || ""}
-                    disabled
-                    className="sm:col-span-2 bg-secondary"
-                  />
+                  <Input value={user?.email || ""} disabled className="col-span-2" />
                 </div>
 
                 <div className="flex justify-end">
-                  <Button onClick={handleNameUpdate} disabled={isSavingName}>
-                    {isSavingName ? "Saving..." : "Save Changes"}
+                  <Button onClick={handleNameUpdate}>
+                    {isSavingName ? "Saving..." : "Save"}
                   </Button>
                 </div>
               </CardContent>
             </Card>
           )}
 
-          {/* ----------- BUSINESS INFO ----------- */}
+          {/* ---------------- BUSINESS INFO ---------------- */}
           {activeView === "business" && (
             <Card>
               <CardHeader>
@@ -330,85 +288,78 @@ export default function SettingsPage() {
                 <CardDescription>Verified company details.</CardDescription>
               </CardHeader>
               <CardContent>
-                {userData?.verificationStatus === "approved" && companyDetails ? (
+                {!companyDetails ? (
+                  <p>Your business is not verified.</p>
+                ) : (
                   <div className="space-y-4">
-                    <div className="grid sm:grid-cols-3 gap-4">
+                    {/* Legal Name */}
+                    <div className="grid grid-cols-3 gap-4">
                       <Label>Legal Name</Label>
-                      <p className="sm:col-span-2 text-sm text-muted-foreground">
+                      <p className="col-span-2 text-muted-foreground">
                         {companyDetails.legalName}
                       </p>
                     </div>
 
+                    {/* Address */}
                     {companyDetails.address && (
-                      <div className="grid sm:grid-cols-3 gap-4">
+                      <div className="grid grid-cols-3 gap-4">
                         <Label>Address</Label>
-                        <p className="sm:col-span-2 text-sm text-muted-foreground">
+                        <p className="col-span-2 text-muted-foreground">
                           {companyDetails.address}
                         </p>
                       </div>
                     )}
 
-                    <div className="grid sm:grid-cols-3 gap-4">
+                    {/* GSTIN */}
+                    <div className="grid grid-cols-3 gap-4">
                       <Label>GSTIN</Label>
-                      <p className="sm:col-span-2 text-sm text-muted-foreground">
+                      <p className="col-span-2 text-muted-foreground">
                         {companyDetails.gstin}
                       </p>
                     </div>
 
+                    {/* PAN ⭐ */}
+                    <div className="grid grid-cols-3 gap-4">
+                      <Label>PAN</Label>
+                      <p className="col-span-2 text-muted-foreground">
+                        {companyDetails.pan}
+                      </p>
+                    </div>
+
+                    {/* Exporter Fields */}
                     {userData?.userType === "exporter" && (
                       <>
-                        <div className="grid sm:grid-cols-3 gap-4">
-                          <Label>PAN</Label>
-                          <p className="sm:col-span-2 text-sm text-muted-foreground">
-                            {companyDetails.pan}
-                          </p>
-                        </div>
-
-                        <div className="grid sm:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-3 gap-4">
                           <Label>TAN</Label>
-                          <p className="sm:col-span-2 text-sm text-muted-foreground">
-                            {companyDetails.tan || "N/A"}
+                          <p className="col-span-2 text-muted-foreground">
+                            {companyDetails.tan}
                           </p>
                         </div>
 
-                        <div className="grid sm:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-3 gap-4">
                           <Label>IEC Code</Label>
-                          <p className="sm:col-span-2 text-sm text-muted-foreground">
+                          <p className="col-span-2 text-muted-foreground">
                             {companyDetails.iecCode}
                           </p>
                         </div>
 
-                        <div className="grid sm:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-3 gap-4">
                           <Label>AD Code</Label>
-                          <p className="sm:col-span-2 text-sm text-muted-foreground">
+                          <p className="col-span-2 text-muted-foreground">
                             {companyDetails.adCode}
                           </p>
                         </div>
                       </>
                     )}
 
+                    {/* Carrier Field */}
                     {userData?.userType === "carrier" && (
-                      <div className="grid sm:grid-cols-3 gap-4">
+                      <div className="grid grid-cols-3 gap-4">
                         <Label>License No.</Label>
-                        <p className="sm:col-span-2 text-sm text-muted-foreground">
+                        <p className="col-span-2 text-muted-foreground">
                           {companyDetails.licenseNumber}
                         </p>
                       </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center justify-center h-48 border-2 border-dashed rounded-lg">
-                    <Building2 className="h-10 w-10 text-muted-foreground mb-4" />
-                    <p className="text-muted-foreground">
-                      Your business information is not yet verified.
-                    </p>
-                    {userData?.verificationStatus === "unsubmitted" && (
-                      <Button
-                        variant="link"
-                        onClick={() => router.push("/gst-verification")}
-                      >
-                        Complete Verification
-                      </Button>
                     )}
                   </div>
                 )}
@@ -416,113 +367,71 @@ export default function SettingsPage() {
             </Card>
           )}
 
-          {/* ----------- PASSWORD ----------- */}
+          {/* ---------------- PASSWORD ---------------- */}
           {activeView === "password" && (
             <Card>
               <CardHeader>
                 <CardTitle>Change Password</CardTitle>
-                <CardDescription>
-                  Update your password to keep your account secure.
-                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="grid sm:grid-cols-3 gap-4">
+                <div className="grid grid-cols-3 gap-4">
                   <Label>Current Password</Label>
                   <Input
                     type="password"
                     value={currentPassword}
                     onChange={(e) => setCurrentPassword(e.target.value)}
-                    className="sm:col-span-2"
+                    className="col-span-2"
                   />
                 </div>
 
-                <div className="grid sm:grid-cols-3 gap-4">
+                <div className="grid grid-cols-3 gap-4">
                   <Label>New Password</Label>
                   <Input
                     type="password"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    className="sm:col-span-2"
+                    className="col-span-2"
                   />
                 </div>
 
-                <div className="grid sm:grid-cols-3 gap-4">
-                  <Label>Confirm New Password</Label>
+                <div className="grid grid-cols-3 gap-4">
+                  <Label>Confirm Password</Label>
                   <Input
                     type="password"
                     value={confirmNewPassword}
                     onChange={(e) => setConfirmNewPassword(e.target.value)}
-                    className="sm:col-span-2"
+                    className="col-span-2"
                   />
                 </div>
 
                 <div className="flex justify-end">
-                  <Button
-                    onClick={handleChangePassword}
-                    disabled={isChangingPassword}
-                  >
-                    {isChangingPassword ? "Changing..." : "Change Password"}
+                  <Button onClick={handleChangePassword}>
+                    {isChangingPassword ? "Updating..." : "Update Password"}
                   </Button>
                 </div>
               </CardContent>
             </Card>
           )}
 
-          {/* ----------- PREFERENCES ----------- */}
+          {/* ---------------- PREFERENCES ---------------- */}
           {activeView === "preferences" && (
             <Card>
               <CardHeader>
-                <CardTitle>User Preferences</CardTitle>
-                <CardDescription>Customize your experience.</CardDescription>
+                <CardTitle>Preferences</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-6">
-                <Label>Theme</Label>
-                <RadioGroup
-                  value={theme}
-                  onValueChange={setTheme}
-                  className="grid grid-cols-3 gap-4"
-                >
-                  <div>
-                    <RadioGroupItem
-                      value="light"
-                      id="light"
-                      className="peer sr-only"
-                    />
-                    <Label
-                      htmlFor="light"
-                      className="flex flex-col items-center p-4 border rounded-md cursor-pointer peer-data-[state=checked]:border-primary"
-                    >
-                      <Sun className="h-6 w-6" />
+              <CardContent>
+                <RadioGroup value={theme} onValueChange={setTheme}>
+                  <div className="flex gap-4">
+                    <Label className="flex items-center gap-2">
+                      <RadioGroupItem value="light" />
                       Light
                     </Label>
-                  </div>
-
-                  <div>
-                    <RadioGroupItem
-                      value="dark"
-                      id="dark"
-                      className="peer sr-only"
-                    />
-                    <Label
-                      htmlFor="dark"
-                      className="flex flex-col items-center p-4 border rounded-md cursor-pointer peer-data-[state=checked]:border-primary"
-                    >
-                      <Moon className="h-6 w-6" />
+                    <Label className="flex items-center gap-2">
+                      <RadioGroupItem value="dark" />
                       Dark
                     </Label>
-                  </div>
-
-                  <div>
-                    <RadioGroupItem
-                      value="system"
-                      id="system"
-                      className="peer sr-only"
-                    />
-                    <Label
-                      htmlFor="system"
-                      className="flex flex-col items-center p-4 border rounded-md cursor-pointer peer-data-[state=checked]:border-primary"
-                    >
-                      <Monitor className="h-6 w-6" />
+                    <Label className="flex items-center gap-2">
+                      <RadioGroupItem value="system" />
                       System
                     </Label>
                   </div>
@@ -531,42 +440,26 @@ export default function SettingsPage() {
             </Card>
           )}
 
-          {/* ----------- BANK ----------- */}
+          {/* ---------------- BANK ---------------- */}
           {activeView === "bank" && (
             <Card>
               <CardHeader>
-                <CardTitle>Bank Account Details</CardTitle>
-                <CardDescription>
-                  Manage your payment bank details.
-                </CardDescription>
+                <CardTitle>Bank Details</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="flex flex-col items-center justify-center h-48 border-2 border-dashed rounded-lg">
-                  <Landmark className="h-10 w-10 text-muted-foreground mb-4" />
-                  <p className="text-muted-foreground">
-                    Bank account management is coming soon.
-                  </p>
-                </div>
+                <p>Coming soon.</p>
               </CardContent>
             </Card>
           )}
 
-          {/* ----------- REGULATORY ----------- */}
+          {/* ---------------- REGULATORY ---------------- */}
           {activeView === "regulatory" && (
             <Card>
               <CardHeader>
                 <CardTitle>Regulatory Details</CardTitle>
-                <CardDescription>
-                  Upload and manage compliance documents.
-                </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="flex flex-col items-center justify-center h-48 border-2 border-dashed rounded-lg">
-                  <FileText className="h-10 w-10 text-muted-foreground mb-4" />
-                  <p className="text-muted-foreground">
-                    Regulatory details management is coming soon.
-                  </p>
-                </div>
+                <p>Coming soon.</p>
               </CardContent>
             </Card>
           )}
