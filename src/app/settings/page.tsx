@@ -16,10 +16,10 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Moon, Sun, Monitor, User as UserIcon, Lock, Palette, Landmark, FileText } from "lucide-react";
+import { Moon, Sun, Monitor, User as UserIcon, Lock, Palette, Landmark, FileText, Building2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-type SettingsView = "profile" | "password" | "preferences" | "bank" | "regulatory";
+type SettingsView = "profile" | "business" | "password" | "preferences" | "bank" | "regulatory";
 
 const PageSkeleton = () => (
     <div className="container max-w-5xl py-6 md:py-10">
@@ -39,6 +39,7 @@ const PageSkeleton = () => (
 const SidebarNav = ({ activeView, setView }: { activeView: SettingsView, setView: (view: SettingsView) => void }) => {
     const navItems = [
         { id: "profile", label: "Profile Information", icon: UserIcon },
+        { id: "business", label: "Business Information", icon: Building2 },
         { id: "password", label: "Password", icon: Lock },
         { id: "preferences", label: "User Preferences", icon: Palette },
         { id: "bank", label: "Bank Account Details", icon: Landmark },
@@ -65,6 +66,7 @@ const SidebarNav = ({ activeView, setView }: { activeView: SettingsView, setView
 export default function SettingsPage() {
     const [user, setUser] = useState<User | null>(null);
     const [userData, setUserData] = useState<DocumentData | null>(null);
+    const [companyDetails, setCompanyDetails] = useState<DocumentData | null>(null);
     const [loading, setLoading] = useState(true);
     const [activeView, setActiveView] = useState<SettingsView>("profile");
 
@@ -91,6 +93,14 @@ export default function SettingsPage() {
                     const data = userDoc.data();
                     setUserData(data);
                     setName(data.name || "");
+                    
+                    if (data.verificationStatus === 'approved') {
+                        const companyDetailsRef = doc(db, "users", currentUser.uid, "companyDetails", currentUser.uid);
+                        const companyDetailsSnap = await getDoc(companyDetailsRef);
+                        if (companyDetailsSnap.exists()) {
+                            setCompanyDetails(companyDetailsSnap.data());
+                        }
+                    }
                 }
                 setLoading(false);
             } else {
@@ -177,7 +187,7 @@ export default function SettingsPage() {
                         <Card className="bg-white dark:bg-card">
                             <CardHeader>
                                 <CardTitle>Profile Information</CardTitle>
-                                <CardDescription>Manage your personal and company details.</CardDescription>
+                                <CardDescription>Manage your personal details.</CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-6">
                                 <div className="grid sm:grid-cols-3 items-center gap-4">
@@ -193,47 +203,67 @@ export default function SettingsPage() {
                                         {isSavingName ? "Saving..." : "Save Changes"}
                                     </Button>
                                 </div>
-                                {userData?.isGstVerified && userData?.companyDetails && (
-                                    <>
-                                        <Separator />
-                                        <div className="space-y-4">
-                                            <h3 className="text-lg font-medium">Verified Company Details</h3>
-                                            <div className="grid sm:grid-cols-3 items-start gap-4">
-                                                <Label>Legal Name</Label>
-                                                <p className="sm:col-span-2 text-sm text-muted-foreground">{userData.companyDetails.legalName}</p>
-                                            </div>
-                                            {userData.companyDetails.address && (
-                                                <div className="grid sm:grid-cols-3 items-start gap-4">
-                                                    <Label>Address</Label>
-                                                    <p className="sm:col-span-2 text-sm text-muted-foreground">{userData.companyDetails.address}</p>
-                                                </div>
-                                            )}
-                                            <div className="grid sm:grid-cols-3 items-start gap-4">
-                                                <Label>GSTIN</Label>
-                                                <p className="sm:col-span-2 text-sm text-muted-foreground">{userData.gstin}</p>
-                                            </div>
-                                            {userData.userType === 'exporter' && (
-                                                <>
-                                                    <div className="grid sm:grid-cols-3 items-start gap-4">
-                                                        <Label>PAN</Label>
-                                                        <p className="sm:col-span-2 text-sm text-muted-foreground">{userData.companyDetails.pan}</p>
-                                                    </div>
-                                                    <div className="grid sm:grid-cols-3 items-start gap-4">
-                                                        <Label>TAN</Label>
-                                                        <p className="sm:col-span-2 text-sm text-muted-foreground">{userData.companyDetails.tan || 'N/A'}</p>
-                                                    </div>
-                                                    <div className="grid sm:grid-cols-3 items-start gap-4">
-                                                        <Label>IEC Code</Label>
-                                                        <p className="sm:col-span-2 text-sm text-muted-foreground">{userData.companyDetails.iecCode}</p>
-                                                    </div>
-                                                    <div className="grid sm:grid-cols-3 items-start gap-4">
-                                                        <Label>AD Code</Label>
-                                                        <p className="sm:col-span-2 text-sm text-muted-foreground">{userData.companyDetails.adCode}</p>
-                                                    </div>
-                                                </>
-                                            )}
+                            </CardContent>
+                        </Card>
+                    )}
+                     {activeView === 'business' && (
+                        <Card className="bg-white dark:bg-card">
+                            <CardHeader>
+                                <CardTitle>Business Information</CardTitle>
+                                <CardDescription>Your verified company details.</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                {userData?.verificationStatus === 'approved' && companyDetails ? (
+                                    <div className="space-y-4">
+                                        <div className="grid sm:grid-cols-3 items-start gap-4">
+                                            <Label>Legal Name</Label>
+                                            <p className="sm:col-span-2 text-sm text-muted-foreground">{companyDetails.legalName}</p>
                                         </div>
-                                    </>
+                                        {companyDetails.address && (
+                                            <div className="grid sm:grid-cols-3 items-start gap-4">
+                                                <Label>Address</Label>
+                                                <p className="sm:col-span-2 text-sm text-muted-foreground">{companyDetails.address}</p>
+                                            </div>
+                                        )}
+                                        <div className="grid sm:grid-cols-3 items-start gap-4">
+                                            <Label>GSTIN</Label>
+                                            <p className="sm:col-span-2 text-sm text-muted-foreground">{userData.gstin || companyDetails.gstin}</p>
+                                        </div>
+                                        {userData?.userType === 'exporter' && (
+                                            <>
+                                                <div className="grid sm:grid-cols-3 items-start gap-4">
+                                                    <Label>PAN</Label>
+                                                    <p className="sm:col-span-2 text-sm text-muted-foreground">{companyDetails.pan}</p>
+                                                </div>
+                                                <div className="grid sm:grid-cols-3 items-start gap-4">
+                                                    <Label>TAN</Label>
+                                                    <p className="sm:col-span-2 text-sm text-muted-foreground">{companyDetails.tan || 'N/A'}</p>
+                                                </div>
+                                                <div className="grid sm:grid-cols-3 items-start gap-4">
+                                                    <Label>IEC Code</Label>
+                                                    <p className="sm:col-span-2 text-sm text-muted-foreground">{companyDetails.iecCode}</p>
+                                                </div>
+                                                <div className="grid sm:grid-cols-3 items-start gap-4">
+                                                    <Label>AD Code</Label>
+                                                    <p className="sm:col-span-2 text-sm text-muted-foreground">{companyDetails.adCode}</p>
+                                                </div>
+                                            </>
+                                        )}
+                                        {userData?.userType === 'carrier' && (
+                                             <div className="grid sm:grid-cols-3 items-start gap-4">
+                                                <Label>License No.</Label>
+                                                <p className="sm:col-span-2 text-sm text-muted-foreground">{companyDetails.licenseNumber}</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-col items-center justify-center h-48 border-2 border-dashed rounded-lg">
+                                        <Building2 className="h-10 w-10 text-muted-foreground mb-4" />
+                                        <p className="text-muted-foreground">Your business information is not yet verified.</p>
+                                        {userData?.verificationStatus === 'unsubmitted' && (
+                                            <Button variant="link" onClick={() => router.push('/gst-verification')}>Complete Verification</Button>
+                                        )}
+                                    </div>
                                 )}
                             </CardContent>
                         </Card>
@@ -349,4 +379,3 @@ export default function SettingsPage() {
             </div>
         </div>
     );
-}
