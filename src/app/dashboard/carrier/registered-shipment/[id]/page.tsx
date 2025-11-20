@@ -10,12 +10,14 @@ import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Check, Clock, FileText } from "lucide-react";
+import { ArrowLeft, Check, Clock, FileText, Award, Star } from "lucide-react";
 import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 
 export default function RegisteredShipmentDetailPage() {
   const [user, setUser] = useState<User | null>(null);
   const [shipment, setShipment] = useState<DocumentData | null>(null);
+  const [feedbackData, setFeedbackData] = useState<DocumentData | null>(null);
   const [loading, setLoading] = useState(true);
 
   const router = useRouter();
@@ -44,6 +46,7 @@ export default function RegisteredShipmentDetailPage() {
     if (!user || !shipmentId) return;
     
     let unsubscribeShipment: () => void = () => {};
+    let unsubscribeFeedback: (() => void) | null = null;
 
     const shipmentDocRef = doc(db, "shipments", shipmentId);
     unsubscribeShipment = onSnapshot(shipmentDocRef, (docSnap) => {
@@ -54,6 +57,19 @@ export default function RegisteredShipmentDetailPage() {
             return;
         }
         setShipment({ id: docSnap.id, ...shipmentData });
+
+        if (shipmentData.status === 'delivered') {
+          // Listen for feedback only when delivered
+          const feedbackQuery = query(collection(db, "shipments", shipmentId, "feedback"));
+          unsubscribeFeedback = onSnapshot(feedbackQuery, (querySnapshot) => {
+            if (!querySnapshot.empty) {
+              setFeedbackData(querySnapshot.docs[0].data());
+            } else {
+              setFeedbackData(null);
+            }
+          });
+        }
+
       } else {
         toast({ title: "Error", description: "Shipment not found.", variant: "destructive" });
         router.push("/dashboard/carrier");
@@ -67,6 +83,9 @@ export default function RegisteredShipmentDetailPage() {
 
     return () => {
         unsubscribeShipment();
+        if (unsubscribeFeedback) {
+          unsubscribeFeedback();
+        }
     };
 
   }, [user, shipmentId, router, toast]);
@@ -104,6 +123,11 @@ export default function RegisteredShipmentDetailPage() {
                 return { text: "You are Awarded", description: `Congratulations! You have won the bid for this shipment.` };
              }
             return { text: "Other Carrier has been Awarded", description: `This shipment has been awarded to another carrier.` };
+        case 'delivered':
+             if (isWinningCarrier) {
+                return { text: "Delivered", description: "This shipment has been marked as delivered." };
+             }
+            return { text: "Delivered", description: `This shipment has been delivered by ${shipment.winningCarrierName}.` };
         default:
             return { text: "Pending", description: "This shipment is not yet available for bidding." };
     }
@@ -130,7 +154,7 @@ export default function RegisteredShipmentDetailPage() {
                 <CardContent className="space-y-6 text-sm">
                     <div className="grid md:grid-cols-2 gap-4 border-b pb-6">
                          {shipment.shipmentType && <div><span className="font-semibold text-muted-foreground block mb-1">Shipment Type</span>{shipment.shipmentType}</div>}
-                         {shipment.hsnCode && <div><span className="font-semibold text-muted-foreground block mb-1">HSN Code</span>{shipment.hsnCode}</div>}
+                         {shipment.hsnCode && <div><span className="font-semibold text-muted-foreground block mb-1">HSN / ITC-HS Code</span>{shipment.hsnCode}</div>}
                          {shipment.modeOfShipment && <div className="md:col-span-2"><span className="font-semibold text-muted-foreground block mb-1">Mode of Shipment</span>{shipment.modeOfShipment}</div>}
                     </div>
                     <div className="grid md:grid-cols-2 gap-4 border-b pb-6">
@@ -164,12 +188,29 @@ export default function RegisteredShipmentDetailPage() {
                 <CardDescription>{statusInfo.description}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex flex-col items-center justify-center p-4 bg-secondary rounded-lg">
-                  <div className="flex items-center gap-2">
-                    <Check className="h-6 w-6 text-primary" />
-                    <p className="text-lg font-semibold">{statusInfo.text}</p>
-                  </div>
-                </div>
+                {shipment.status === 'awarded' && isWinningCarrier ? (
+                     <div className="flex flex-col items-center justify-center p-4 bg-green-500/10 dark:bg-green-500/20 text-green-700 dark:text-green-300 rounded-lg">
+                        <div className="flex items-center gap-2">
+                            <Award className="h-6 w-6" />
+                            <p className="text-lg font-semibold">{statusInfo.text}</p>
+                        </div>
+                    </div>
+                ) : shipment.status === 'delivered' ? (
+                     <div className="flex flex-col items-center justify-center p-4 bg-gray-800 text-white dark:bg-gray-900 rounded-lg">
+                        <div className="flex items-center gap-2">
+                            <Check className="text-yellow-400 h-6 w-6" />
+                            <p className="text-lg font-semibold">{statusInfo.text}</p>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="flex flex-col items-center justify-center p-4 bg-secondary rounded-lg">
+                        <div className="flex items-center gap-2">
+                            <Clock className="h-6 w-6 text-primary" />
+                            <p className="text-lg font-semibold">{statusInfo.text}</p>
+                        </div>
+                    </div>
+                )}
+                
                 {shipment.status === 'scheduled' && (
                     <p className="text-center text-sm text-muted-foreground">You will be notified when this shipment goes live for bidding.</p>
                 )}
@@ -181,6 +222,34 @@ export default function RegisteredShipmentDetailPage() {
                 )}
               </CardContent>
             </Card>
+            {shipment.status === 'delivered' && feedbackData && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Rating & Feedback</CardTitle>
+                  <CardDescription>From: {shipment.exporterName}</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-center gap-1">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <Star
+                        key={star}
+                        className={cn(
+                          "h-8 w-8",
+                          star <= (feedbackData.rating || 0)
+                            ? "text-yellow-400 fill-yellow-400"
+                            : "text-muted-foreground/50"
+                        )}
+                      />
+                    ))}
+                  </div>
+                  {feedbackData.feedback && (
+                    <blockquote className="border-l-2 pl-6 italic text-muted-foreground">
+                      {feedbackData.feedback}
+                    </blockquote>
+                  )}
+                </CardContent>
+              </Card>
+            )}
         </div>
       </div>
     </div>
