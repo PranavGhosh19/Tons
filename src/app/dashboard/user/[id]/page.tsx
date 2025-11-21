@@ -61,9 +61,17 @@ export default function UserProfilePage() {
             setLoading(true);
             try {
                 const userDocRef = doc(db, "users", userId);
-                const userDoc = await getDoc(userDocRef);
+                const companyDetailsRef = doc(db, "users", userId, "companyDetails", userId);
+                
+                const [userDoc, companyDetailsDoc] = await Promise.all([
+                    getDoc(userDocRef),
+                    getDoc(companyDetailsRef)
+                ]);
+
                 if (userDoc.exists()) {
-                    setUser({ id: userDoc.id, ...userDoc.data() });
+                    const userData = userDoc.data();
+                    const companyDetails = companyDetailsDoc.exists() ? companyDetailsDoc.data() : null;
+                    setUser({ id: userDoc.id, ...userData, companyDetails });
                 } else {
                     toast({ title: "Not Found", description: "This user does not exist.", variant: "destructive" });
                     router.push("/dashboard/user-management");
@@ -146,7 +154,7 @@ export default function UserProfilePage() {
                                 </Badge>
                             </div>
                             
-                            {user.companyDetails && (
+                            {user.companyDetails ? (
                                 <>
                                     <Separator />
                                     <div className="space-y-4">
@@ -155,19 +163,30 @@ export default function UserProfilePage() {
                                             <div className="grid grid-cols-3 gap-4"><dt className="text-muted-foreground col-span-1">Legal Name</dt><dd className="col-span-2 font-medium">{user.companyDetails.legalName}</dd></div>
                                             {user.companyDetails.tradeName && <div className="grid grid-cols-3 gap-4"><dt className="text-muted-foreground col-span-1">Trade Name</dt><dd className="col-span-2 font-medium">{user.companyDetails.tradeName}</dd></div>}
                                             {user.companyDetails.address && <div className="grid grid-cols-3 gap-4"><dt className="text-muted-foreground col-span-1">Address</dt><dd className="col-span-2 font-medium">{user.companyDetails.address}</dd></div>}
-                                            <div className="grid grid-cols-3 gap-4"><dt className="text-muted-foreground col-span-1">GSTIN</dt><dd className="col-span-2 font-medium">{user.gstin}</dd></div>
+                                            <div className="grid grid-cols-3 gap-4"><dt className="text-muted-foreground col-span-1">GSTIN</dt><dd className="col-span-2 font-medium">{user.companyDetails.gstin}</dd></div>
+                                            <div className="grid grid-cols-3 gap-4"><dt className="text-muted-foreground col-span-1">PAN</dt><dd className="col-span-2 font-medium">{user.companyDetails.pan}</dd></div>
 
                                             {user.userType === 'exporter' && (
                                                 <>
-                                                    <div className="grid grid-cols-3 gap-4"><dt className="text-muted-foreground col-span-1">PAN</dt><dd className="col-span-2 font-medium">{user.companyDetails.pan}</dd></div>
                                                     <div className="grid grid-cols-3 gap-4"><dt className="text-muted-foreground col-span-1">TAN</dt><dd className="col-span-2 font-medium">{user.companyDetails.tan || 'N/A'}</dd></div>
                                                     <div className="grid grid-cols-3 gap-4"><dt className="text-muted-foreground col-span-1">IEC Code</dt><dd className="col-span-2 font-medium">{user.companyDetails.iecCode}</dd></div>
                                                     <div className="grid grid-cols-3 gap-4"><dt className="text-muted-foreground col-span-1">AD Code</dt><dd className="col-span-2 font-medium">{user.companyDetails.adCode}</dd></div>
                                                 </>
                                             )}
+
+                                            {user.userType === 'carrier' && (
+                                                <>
+                                                    <div className="grid grid-cols-3 gap-4"><dt className="text-muted-foreground col-span-1">License No.</dt><dd className="col-span-2 font-medium">{user.companyDetails.licenseNumber || 'N/A'}</dd></div>
+                                                    <div className="grid grid-cols-3 gap-4"><dt className="text-muted-foreground col-span-1">Company Type</dt><dd className="col-span-2 font-medium capitalize">{user.companyDetails.companyType || 'N/A'}</dd></div>
+                                                </>
+                                            )}
                                         </dl>
                                     </div>
                                 </>
+                            ) : (
+                                <div className="text-center py-8 text-muted-foreground">
+                                    No business details have been submitted by this user.
+                                </div>
                             )}
                         </CardContent>
                     </Card>
