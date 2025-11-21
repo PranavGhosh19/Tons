@@ -396,8 +396,7 @@ export default function ShipmentDetailPage() {
   const canGoLive = isEmployee && shipment.status === 'scheduled';
   const canViewDocuments = (isOwner || isEmployee || isWinningCarrier) && shipment.status === 'awarded';
   const canInvite = (isOwner || isEmployee) && shipment.status === 'scheduled';
-  const canViewDeliveredCard = (isOwner || isEmployee || isWinningCarrier) && shipment.status === 'awarded';
-  const canMarkAsDelivered = isOwner;
+  const canMarkAsDelivered = isOwner && shipment.status === 'awarded';
   const canViewFeedbackCard = isMarkedAsDelivered && (isOwner || isEmployee || isWinningCarrier);
   const canSubmitFeedback = (isOwner || isEmployee) && !feedbackData;
 
@@ -619,32 +618,16 @@ export default function ShipmentDetailPage() {
                                 View Documents
                                 </Button>
                             )}
-                        </CardContent>
-                    </Card>
-                )}
-
-
-                {canViewDeliveredCard && (
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Delivered?</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <Button 
-                                className={cn("w-full", isMarkedAsDelivered && "bg-green-600 hover:bg-green-700")}
-                                onClick={handleMarkAsDelivered}
-                                disabled={isMarkedAsDelivered || !canMarkAsDelivered || isSubmitting}
-                            >
-                                {isSubmitting && !isMarkedAsDelivered ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                                {isMarkedAsDelivered ? (
-                                    <>
-                                        <Check className="mr-2 h-4 w-4" />
-                                        Confirmed
-                                    </>
-                                ) : (
-                                    "Delivered"
-                                )}
-                            </Button>
+                             {canMarkAsDelivered && (
+                                <Button 
+                                    className="w-full mt-4"
+                                    onClick={handleMarkAsDelivered}
+                                    disabled={isSubmitting}
+                                >
+                                    {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
+                                    Mark as Delivered
+                                </Button>
+                            )}
                         </CardContent>
                     </Card>
                 )}
