@@ -9,9 +9,8 @@
 
 import {setGlobalOptions} from "firebase-functions/v2";
 import * as logger from "firebase-functions/logger";
-import {onDocumentWritten} from "firebase-functions/v2/firestore";
+import {onDocumentWritten, onDocumentCreated} from "firebase-functions/v2/firestore";
 import {onRequest} from "firebase-functions/v2/https";
-import {onSchedule} from "firebase-functions/v2/scheduler";
 import * as admin from "firebase-admin";
 import {CloudTasksClient} from "@google-cloud/tasks";
 
@@ -22,8 +21,8 @@ const db = admin.firestore();
 // -----------------------------------------------------------------------------
 // Cloud Tasks Configuration
 // -----------------------------------------------------------------------------
-const PROJECT_ID = "shipping-battlefield";
-const QUEUE_LOCATION = "asia-south1";
+const PROJECT_ID = "cargoflow-j35du";
+const QUEUE_LOCATION = "us-central1";
 const QUEUE_ID = "shipment-go-live-queue";
 
 // This must be a service account with Cloud Tasks Enqueuer role
@@ -32,8 +31,37 @@ const SERVICE_ACCOUNT_EMAIL =
 
 const tasksClient = new CloudTasksClient();
 
-// Limit concurrent container instances
-setGlobalOptions({maxInstances: 10});
+// Set default region globally
+setGlobalOptions({region: "us-central1", maxInstances: 10});
+
+// -----------------------------------------------------------------------------
+// Notification Helpers
+// -----------------------------------------------------------------------------
+interface Notification {
+    recipientId: string;
+    message: string;
+    link: string;
+    isRead: boolean;
+    createdAt: admin.firestore.FieldValue;
+}
+
+/**
+ * Creates a notification document in Firestore.
+ * @param {Notification} notification The notification object.
+ */
+async function createNotification(notification: Omit<Notification, "isRead" | "createdAt">) {
+  try {
+    await db.collection("notifications").add({
+      ...notification,
+      isRead: false,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+    logger.log(`Notification created for ${notification.recipientId}`);
+  } catch (error) {
+    logger.error(`Error creating notification for ${notification.recipientId}:`, error);
+  }
+}
+
 
 /**
  * Creates or updates a Cloud Task to trigger a shipment go-live event.
@@ -47,21 +75,31 @@ export const onShipmentWrite = onDocumentWritten(
       const beforeData = event.data?.before.data();
       const afterData = event.data?.after.data();
 
-      // If a task was scheduled for the previous version of the document,
-      // we need to delete it to prevent it from running.
+      // --- Task Deletion Logic ---
+      // If a task was scheduled for the previous version, delete it.
       if (beforeData?.goLiveTaskName) {
         logger.log("Deleting previous task:", beforeData.goLiveTaskName);
         await tasksClient.deleteTask({name: beforeData.goLiveTaskName})
             .catch((err) => {
-            // It's not a critical error if the task is already gone.
-              if (err.code !== 5) {
+              if (err.code !== 5) { // 5 = NOT_FOUND
                 logger.error("Failed to delete previous task", err);
               }
             });
       }
+      
+      // --- Status Change Notifications (Awarded) ---
+      if (beforeData?.status !== "awarded" && afterData?.status === "awarded") {
+        if (afterData.winningCarrierId && afterData.productName) {
+           await createNotification({
+              recipientId: afterData.winningCarrierId,
+              message: `Congratulations! You've won the bid for the '${afterData.productName}' shipment.`,
+              link: `/dashboard/shipment/${shipmentId}`,
+           });
+        }
+      }
 
-      // If the shipment is not in a 'scheduled' state or lacks a go-live time,
-      // we don't need to create a new task.
+      // --- Task Creation Logic ---
+      // If not 'scheduled' or no go-live time, do nothing.
       if (!afterData ||
         afterData.status !== "scheduled" ||
         !afterData.goLiveAt) {
@@ -70,20 +108,13 @@ export const onShipmentWrite = onDocumentWritten(
         return;
       }
 
-      // Firestore Timestamps need to be converted to JS Date objects.
       const goLiveAt = afterData.goLiveAt.toDate();
-
-      // Don't schedule tasks for times in the past.
       const now = new Date();
       if (goLiveAt <= now) {
-        logger.log(
-            `Shipment ${shipmentId} goLiveAt is in the past. ` +
-          "Skipping task creation."
-        );
+        logger.log(`Shipment ${shipmentId} goLiveAt is in the past. Skipping task creation.`);
         return;
       }
 
-      // Construct the Cloud Task with OIDC authentication for secure invocation.
       const task = {
         httpRequest: {
           httpMethod: "POST" as const,
@@ -100,30 +131,51 @@ export const onShipmentWrite = onDocumentWritten(
       };
 
       try {
-        const queuePath = tasksClient.queuePath(
-            PROJECT_ID,
-            QUEUE_LOCATION,
-            QUEUE_ID
-        );
+        const queuePath = tasksClient.queuePath(PROJECT_ID, QUEUE_LOCATION, QUEUE_ID);
         const [response] = await tasksClient.createTask({
           parent: queuePath,
           task,
         });
 
         logger.log(`Created task ${response.name} for shipment ${shipmentId}`);
-
-        // Store the task name on the shipment document for future management.
         await db.collection("shipments").doc(shipmentId).update({
           goLiveTaskName: response.name,
         });
       } catch (error) {
-        logger.error(
-            `Error creating task for shipment ${shipmentId}:`,
-            error
-        );
+        logger.error(`Error creating task for shipment ${shipmentId}:`, error);
       }
     },
 );
+
+/**
+ * Creates a notification when a new bid is placed on a shipment.
+ */
+export const onBidCreate = onDocumentCreated("shipments/{shipmentId}/bids/{bidId}", async (event) => {
+    const shipmentId = event.params.shipmentId;
+    const bidData = event.data?.data();
+
+    if (!bidData) {
+        logger.log("No bid data found, cannot create notification.");
+        return;
+    }
+
+    try {
+        const shipmentDoc = await db.collection("shipments").doc(shipmentId).get();
+        if (shipmentDoc.exists) {
+            const shipmentData = shipmentDoc.data();
+            if (shipmentData && shipmentData.exporterId) {
+                await createNotification({
+                    recipientId: shipmentData.exporterId,
+                    message: `You have a new bid of $${bidData.bidAmount} on your '${shipmentData.productName}' shipment.`,
+                    link: `/dashboard/shipment/${shipmentId}`,
+                });
+            }
+        }
+    } catch (error) {
+        logger.error(`Error fetching shipment ${shipmentId} for new bid notification:`, error);
+    }
+});
+
 
 /**
  * The secure HTTP endpoint called by Cloud Tasks to set a shipment to 'live'.
@@ -146,11 +198,31 @@ export const executeShipmentGoLive = onRequest(async (req, res) => {
       res.status(404).send("Not Found");
       return;
     }
+    
+    const shipmentData = doc.data();
 
     // Only update if the shipment is still in the 'scheduled' state.
-    if (doc.data()?.status === "scheduled") {
+    if (shipmentData?.status === "scheduled") {
       await shipmentRef.update({status: "live"});
       logger.log("Set shipment", shipmentId, "to 'live' via Cloud Task.");
+
+      // --- Notify Registered Carriers ---
+      const registrationsRef = shipmentRef.collection("register");
+      const registrationsSnap = await registrationsRef.get();
+
+      if (!registrationsSnap.empty) {
+        const notifications = registrationsSnap.docs.map((regDoc) => {
+            const carrierId = regDoc.id;
+            return createNotification({
+                recipientId: carrierId,
+                message: `The shipment '${shipmentData.productName}' is now live for bidding!`,
+                link: `/dashboard/carrier/shipment/${shipmentId}`,
+            });
+        });
+        await Promise.all(notifications);
+        logger.log(`Sent ${notifications.length} go-live notifications for shipment ${shipmentId}.`);
+      }
+
       res.status(200).send("OK");
     } else {
       logger.log(
@@ -164,47 +236,5 @@ export const executeShipmentGoLive = onRequest(async (req, res) => {
         error
     );
     res.status(500).send("Internal Server Error");
-  }
-});
-
-/**
- * A sweeper function that runs every hour as a safety net. It finds any
- * scheduled shipments that should have gone live but were missed by the
- * task queue for any reason.
- */
-export const hourlyShipmentSweeper = onSchedule("every 1 hours", async () => {
-  logger.log("Running hourly shipment sweeper function.");
-  const now = admin.firestore.Timestamp.now();
-
-  try {
-    const query = db
-        .collection("shipments")
-        .where("status", "==", "scheduled")
-        .where("goLiveAt", "<=", now);
-
-    const snapshot = await query.get();
-
-    if (snapshot.empty) {
-      logger.log("No overdue scheduled shipments found.");
-      return;
-    }
-
-    // A batch can handle up to 500 operations.
-    // Chunking is needed if more than 500 shipments are found.
-    const docs = snapshot.docs;
-    for (let i = 0; i < docs.length; i += 500) {
-      const chunk = docs.slice(i, i + 500);
-      const batch = db.batch();
-      chunk.forEach((doc) => {
-        logger.log(
-            `Sweeper: Found overdue shipment ${doc.id}. Setting to live.`);
-        batch.update(doc.ref, {status: "live"});
-      });
-      await batch.commit();
-    }
-
-    logger.log(`Successfully updated ${snapshot.size} overdue shipments.`);
-  } catch (error) {
-    logger.error("Error running hourly shipment sweeper:", error);
   }
 });
